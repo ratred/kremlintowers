@@ -37,7 +37,12 @@
         ]
     };
     var state = {
-        inclination: 0
+        cannon : {
+            x: 200,
+            y: 200
+        },
+        active: true,
+        lastFireTime: 0
     };
 
     var game = new Phaser.Game(config);
@@ -55,18 +60,32 @@
         for (let tower of level.towers) {
             this.add.image(tower.x, tower.y, 'tower');
         }
-        cannon = this.add.sprite(200, 200, 'cannon');
+        cannon = this.add.sprite(state.cannon.x, state.cannon.y, 'cannon');
         cannon.angle = 0;
     }
     function update () {
         // set the angle according to the mouse pointer
         mouseX = this.input.x;
         mouseY = this.input.y;
-        cannonX = 200; // only a mock-up! Change later.
-        cannonY = 200;
+        cannonX = state.cannon.x;
+        cannonY = state.cannon.y;
         realAngle = Math.atan2(mouseY - cannonY, mouseX - cannonX) * 180 / Math.PI;
         unrealAngle = realAngle + 180;
         cannon.angle = unrealAngle;
+
+        if (this.input.activePointer.isDown && state.active) {
+            fire();
+            state.active = false;
+            state.lastFireTime = Date.now();
+        }
+
+        if (Date.now() - state.lastFireTime > 1000) {
+            state.active = true;
+        }
+    }
+
+    function fire() {
+        console.info("Boom?");
     }
 
 </script>
