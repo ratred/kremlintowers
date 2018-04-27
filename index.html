@@ -1,15 +1,42 @@
+<html>
+<head>
+    <title>Kremlin towers</title>
+    <meta charset="utf-8" />
 <script src="phaser.js"></script>
 <script type="text/javascript">
-    var game = new Phaser.Game(480, 640, Phaser.AUTO, '', { preload: preload, create: create, update: update });
+    var config = {
+        type: Phaser.AUTO,
+        width: 480,
+        height: 640,
+        physics: {
+            default: 'arcade',
+            arcade: {
+                gravity: {y: 200}
+            }
+        },
+        scene: {
+            preload: preload,
+            create: create,
+            update: update
+        }
+    };
+
+    var game = new Phaser.Game(config);
     function preload() {
-        game.load.image('bullet', 'assets/bullet.png');
-        game.load.image('cannon', 'assets/cannon.png');
-        game.load.image('background', 'assets/background.jpg');
+        console.info("Loading images…");
+        this.load.image('bullet', 'assets/bullet.png');
+        this.load.image('cannon', 'assets/cannon.png');
+        this.load.image('background', 'assets/background.jpg');
     }
     function create() {
-        game.add.tileSprite(0, 0, 480, 640, 'background');
+        this.add.tileSprite(0, 0, 480, 640, 'background');
     }
 
     function update () {
+        console.info("update");
     }
 </script>
+</head>
+<body>
+</body>
+</html>
