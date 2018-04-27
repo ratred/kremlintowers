@@ -20,6 +20,22 @@
             update: update
         }
     };
+    var level = {
+        towers: [
+            {
+                x: 100,
+                y: 450
+            },
+            {
+                x: 200,
+                y: 450
+            },
+            {
+                x: 300,
+                y: 450
+            },
+        ]
+    };
 
     var game = new Phaser.Game(config);
     function preload() {
@@ -27,15 +43,17 @@
         this.load.image('bullet', 'assets/bullet.png');
         this.load.image('cannon', 'assets/cannon.png');
         this.load.image('background', 'assets/background.jpg');
+        this.load.image('tower', 'assets/tower.png')
     }
     function create() {
         this.add.tileSprite(240, 320, 480, 640, 'background');
+        for (let tower of level.towers) {
+            this.add.image(tower.x, tower.y, 'tower');
+        }
     }
-
-
     function update () {
-        console.info("update");
     }
+
 </script>
 </head>
 <body>
