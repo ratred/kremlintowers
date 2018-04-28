@@ -167,10 +167,7 @@
         vector.clear()
         console.info("Boom? " + aa);
         cannons[current_cannon].tower.setTexture('tower');
-        current_cannon++;
-        if (current_cannon >= cannons.length) {
-            current_cannon = 0;
-        }
+        current_cannon = (current_cannon + 1) % cannons.length;
         cannons[current_cannon].tower.setTexture('tower_selected');
     }
 
