@@ -95,7 +95,7 @@
             realAngle = Math.atan2(mouseY - cannonY, mouseX - cannonX) * 180 / Math.PI;
             unrealAngle = realAngle + 180;
             console.info(unrealAngle);
-            if ((unrealAngle <= 360 && unrealAngle >= 270) || (unrealAngle >= 0 && unrealAngle <=90)) {
+            if (check_angle(cannons[current_cannon].allowable_angle, unrealAngle)) {
                 cannons[current_cannon].sprite.angle = unrealAngle;
                 state.aimlength = Phaser.Geom.Line.Length(aimline).toFixed(0);
             }
@@ -136,9 +136,11 @@
         if (cannon.player == 1) {
             cannon.x = tower.x + 20;
             angle = 0;
+            cannon.allowable_angle = [[0,90], [270,360]];
         } else {
             cannon.x = tower.x - 20;
             angle = 180;
+            cannon.allowable_angle = [[90,270]];
         }
 
         cannon.y = tower.y + 2;
@@ -151,6 +153,19 @@
     function fire(aa) {
         vector.clear()
         console.info("Boom? " + aa);
+        current_cannon++;
+        if (current_cannon > cannons.length) {
+            current_cannon = 0;
+        }
+    }
+
+    function check_angle(allowable, angle) {
+        for (let borders of allowable) {
+            if (angle >= borders[0] && angle <= borders[1]) {
+                return true;
+            }
+        }
+        return false;
     }
 
 </script>
