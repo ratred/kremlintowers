@@ -21,6 +21,11 @@
         }
     };
     var level = {
+        playerTower: 
+            {
+                x: 50,
+                y: 430
+            },
         towers: [
             {
                 x: 100,
@@ -62,12 +67,15 @@
     }
     function create() {
         this.add.tileSprite(240, 320, 480, 640, 'background');
+
+        // Создание башни игрока
+
+        createTower(this,level.playerTower);
+
         for (let tower of level.towers) {
             this.add.image(tower.x, tower.y, 'tower');
         }
         vector = this.add.graphics({ lineStyle: { width: 4, color: 0xaa00aa } });
-        cannon = this.add.sprite(state.cannon.x, state.cannon.y, 'cannon');
-        cannon.angle = 0;
     }
     function update () {
         // set the angle according to the mouse pointer
@@ -82,11 +90,12 @@
             vector.strokeLineShape(aimline);
             realAngle = Math.atan2(mouseY - cannonY, mouseX - cannonX) * 180 / Math.PI;
             unrealAngle = realAngle + 180;
-            cannon.angle = unrealAngle;
-            state.aimlength = Phaser.Geom.Line.Length(aimline).toFixed(0);
-            console.info(aimline.Length);
-        } else if (state.inaims == true) {
-
+            console.info(unrealAngle);
+            if ((unrealAngle <= 360 && unrealAngle >= 270) || (unrealAngle >= 0 && unrealAngle <=90)) {
+                cannon.angle = unrealAngle;
+                state.aimlength = Phaser.Geom.Line.Length(aimline).toFixed(0);
+            }
+        } else if (state.inaims == true) { 
             fire(state.aimlength);
             state.active = false;
             state.lastFireTime = Date.now();
@@ -98,6 +107,16 @@
             state.active = true;
         }
     }
+
+    function createTower(obj, tower) {
+        obj.add.image(tower.x, tower.y, 'tower');
+        state.cannon.x = tower.x + 20;
+        state.cannon.y = tower.y + 2;
+        cannon = obj.add.sprite(state.cannon.x, state.cannon.y, 'cannon');
+        cannon.angle = 0;
+
+    }
+
 
     function fire(aa) {
         console.info("Boom? " + aa);
