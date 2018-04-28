@@ -6,7 +6,7 @@
 <script type="text/javascript">
     var config = {
         type: Phaser.AUTO,
-        width: 480,
+        width: 1136,
         height: 640,
         physics: {
             default: 'arcade',
@@ -67,6 +67,7 @@
         console.info("Loading images…");
         this.load.image('bullet', 'assets/bullet.png');
         this.load.image('cannon', 'assets/cannon.png');
+        this.load.image('tower_selected', 'assets/tower_selected.gif');
         this.load.image('background', 'assets/background.jpg');
         this.load.image('tower', 'assets/tower.png')
     }
@@ -78,6 +79,10 @@
         for (let tower of level.towers) {
             cannons.push(createTower(this, tower));
         }
+        // Выделяем текущую башню
+        cannons[current_cannon].tower.setTexture('tower_selected');
+
+
         vector = this.add.graphics({ lineStyle: { width: 4, color: 0xaa00aa } });
     }
 
@@ -124,7 +129,6 @@
      ) */
 
     function createTower(obj, tower) {
-        obj.add.image(tower.x, tower.y, 'tower');
         var cannon = {
             x: 0,
             y: 0,
@@ -132,6 +136,7 @@
 
         };
 
+        cannon.tower = obj.add.sprite(tower.x, tower.y, 'tower');
         var angle;
         if (cannon.player == 1) {
             cannon.x = tower.x + 20;
@@ -153,10 +158,12 @@
     function fire(aa) {
         vector.clear()
         console.info("Boom? " + aa);
+        cannons[current_cannon].tower.setTexture('tower');
         current_cannon++;
-        if (current_cannon > cannons.length) {
+        if (current_cannon >= cannons.length) {
             current_cannon = 0;
         }
+        cannons[current_cannon].tower.setTexture('tower_selected');
     }
 
     function check_angle(allowable, angle) {
