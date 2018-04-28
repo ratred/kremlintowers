@@ -81615,10 +81615,10 @@ var Factory = new Class({
     {
         var sprite = new ArcadeSprite(this.scene, x, y, key, frame);
 
-        this.sys.displayList.add(sprite);
-        this.sys.updateList.add(sprite);
+        //this.sys.displayList.add(sprite);
+        //this.sys.updateList.add(sprite);
 
-        this.world.enableBody(sprite, CONST.DYNAMIC_BODY);
+        //this.world.enableBody(sprite, CONST.DYNAMIC_BODY);
 
         return sprite;
     },
