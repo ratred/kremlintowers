@@ -64,20 +64,28 @@
     var current_cannon = 0;
 
     function preload() {
-        console.info("Loading images…");
+        this.load.tilemapTiledJSON('map', 'assets/map1.json');
         this.load.image('bullet', 'assets/bullet.png');
         this.load.image('cannon', 'assets/cannon.png');
-        this.load.image('tower_selected', 'assets/tower_selected.gif');
+        this.load.image('tower_selected', 'assets/tower_selected.png');
         this.load.image('background', 'assets/background.jpg');
         this.load.image('tower', 'assets/tower.png')
+        this.load.image('tiles', 'assets/tiles.png')
     }
     function create() {
-        this.add.tileSprite(240, 320, 480, 640, 'background');
-
+        this.add.tileSprite(595, 320, 1190, 640, 'background');
+        map = this.add.tilemap('map');
+        var tiles = map.addTilesetImage('tiles');
+        var layer = map.createStaticLayer('kremlin', tiles);
+        var player1_towers = map.createFromTiles(22);
+        var player2_towers = map.createFromTiles(21);
         // Создание всех башен
 
-        for (let tower of level.towers) {
-            cannons.push(createTower(this, tower));
+        for (let tower of player1_towers) {
+            cannons.push(createTower(this, tower, 1));
+        }
+        for (let tower of player2_towers) {
+            cannons.push(createTower(this, tower, 2));
         }
         // Выделяем текущую башню
         cannons[current_cannon].tower.setTexture('tower_selected');
@@ -128,22 +136,22 @@
 
      ) */
 
-    function createTower(obj, tower) {
+    function createTower(obj, tower, player) {
         var cannon = {
             x: 0,
             y: 0,
-            player: tower.player,
+            player: player,
 
         };
 
-        cannon.tower = obj.add.sprite(tower.x, tower.y, 'tower');
+        cannon.tower = obj.add.sprite(tower.x + 16, tower.y, 'tower');
         var angle;
         if (cannon.player == 1) {
-            cannon.x = tower.x + 20;
+            cannon.x = tower.x + 36;
             angle = 0;
             cannon.allowable_angle = [[0,90], [270,360]];
         } else {
-            cannon.x = tower.x - 20;
+            cannon.x = tower.x;
             angle = 180;
             cannon.allowable_angle = [[90,270]];
         }
