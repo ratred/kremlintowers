@@ -24,20 +24,23 @@
         playerTower: 
             {
                 x: 50,
-                y: 430
+                y: 430,
             },
         towers: [
             {
                 x: 100,
-                y: 450
+                y: 450,
+                player: 1
             },
             {
-                x: 200,
-                y: 450
+                x: 350,
+                y: 450, 
+                player: 2
             },
             {
                 x: 300,
-                y: 450
+                y: 450,
+                player: 2
             },
         ]
     };
@@ -57,7 +60,9 @@
 
     var game = new Phaser.Game(config);
 
-    var cannon;
+    var cannons = [];
+    var current_cannon = 0;
+
     function preload() {
         console.info("Loading images…");
         this.load.image('bullet', 'assets/bullet.png');
@@ -68,23 +73,22 @@
     function create() {
         this.add.tileSprite(240, 320, 480, 640, 'background');
 
-        // Создание башни игрока
-
-        createTower(this,level.playerTower);
+        // Создание всех башен
 
         for (let tower of level.towers) {
-            this.add.image(tower.x, tower.y, 'tower');
+            cannons.push(createTower(this, tower));
         }
         vector = this.add.graphics({ lineStyle: { width: 4, color: 0xaa00aa } });
     }
+
     function update () {
         // set the angle according to the mouse pointer
         if (this.input.activePointer.isDown && state.active) {
             state.inaims = true;
             mouseX = this.input.x;
             mouseY = this.input.y;
-            cannonX = state.cannon.x;
-            cannonY = state.cannon.y;
+            cannonX = cannons[current_cannon].x;
+            cannonY = cannons[current_cannon].y;
             var aimline = new Phaser.Geom.Line(cannonX, cannonY, mouseX, mouseY);
             vector.clear()
             vector.strokeLineShape(aimline);
@@ -92,7 +96,7 @@
             unrealAngle = realAngle + 180;
             console.info(unrealAngle);
             if ((unrealAngle <= 360 && unrealAngle >= 270) || (unrealAngle >= 0 && unrealAngle <=90)) {
-                cannon.angle = unrealAngle;
+                cannons[current_cannon].sprite.angle = unrealAngle;
                 state.aimlength = Phaser.Geom.Line.Length(aimline).toFixed(0);
             }
         } else if (state.inaims == true) { 
@@ -108,17 +112,44 @@
         }
     }
 
+    /* -- Фабрика башен. 
+    
+    API:
+    createTower(obj,                  -- Объект в котором создаётся башня
+                [x_coord, y_coord],   -- Координаты центра башни
+                player,               -- Игрок 1 - левый, 2 - правый
+
+
+
+     ) */
+
     function createTower(obj, tower) {
         obj.add.image(tower.x, tower.y, 'tower');
-        state.cannon.x = tower.x + 20;
-        state.cannon.y = tower.y + 2;
-        cannon = obj.add.sprite(state.cannon.x, state.cannon.y, 'cannon');
-        cannon.angle = 0;
+        var cannon = {
+            x: 0,
+            y: 0,
+            player: tower.player,
 
+        };
+
+        var angle;
+        if (cannon.player == 1) {
+            cannon.x = tower.x + 20;
+            angle = 0;
+        } else {
+            cannon.x = tower.x - 20;
+            angle = 180;
+        }
+
+        cannon.y = tower.y + 2;
+        cannon.sprite = obj.add.sprite(cannon.x, cannon.y, 'cannon');
+        cannon.sprite.angle = angle;
+        return cannon;
     }
 
 
     function fire(aa) {
+        vector.clear()
         console.info("Boom? " + aa);
     }
 
