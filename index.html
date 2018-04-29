@@ -83,11 +83,7 @@
     }
     function create() {
         towersGroup = this.add.group();
-        towersGroup.enableBody = true;
-        towersGroup.physicsBodyType = Phaser.Physics.ARCADE;
         shellsGroup = this.add.group();
-        shellsGroup.enableBody = true;
-        shellsGroup.physicsBodyType = Phaser.Physics.ARCADE;
 
         this.add.tileSprite(595, 320, 1190, 640, 'background');
         map = this.add.tilemap('map');
