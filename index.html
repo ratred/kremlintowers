@@ -111,7 +111,6 @@
             vector.strokeLineShape(aimline);
             realAngle = Math.atan2(mouseY - cannonY, mouseX - cannonX) * 180 / Math.PI;
             unrealAngle = realAngle + 180;
-            console.info(unrealAngle);
             if (check_angle(cannons[current_cannon].allowable_angle, unrealAngle)) {
                 cannons[current_cannon].sprite.angle = unrealAngle;
                 state.aimlength = Phaser.Geom.Line.Length(aimline).toFixed(0);
@@ -174,16 +173,16 @@
         cannons[current_cannon].tower.setTexture('tower');
         // запустить снаряд
         angle = cannons[current_cannon].sprite.angle;
-        shell = game.physics.add.sprite(cannons[current_cannon].x, cannons[current_cannon].y, 'shell');
-        shell.body.center.setTo(0.5, 0.5);
+        shell = game.physics.add.image(cannons[current_cannon].x, cannons[current_cannon].y, 'shell');
+        //shell.body.center.setTo(0.5, 0.5);
         shell.setAngle(angle);
         shell.setAngularDrag(1.0);
         shell.setCollideWorldBounds(true);
         shell.setBounce(0, 0);
         // Вот тут мы вызываем обратные тригонометрические функции.
         // Если игра будет лагать, можно будет заоптимизировать, передавая сразу вектор
-        shell.body.velocity.x = aa * Math.cos(angle * Math.PI / 180)
-        shell.body.velocity.y = aa * Math.sin(angle * Math.PI / 180);
+        shell.setVelocityX(aa * Math.cos(angle * Math.PI / 180));
+        shell.setVelocityY(aa * Math.sin(angle * Math.PI / 180));
         shell.id = id;
         id++;
         shells.push(shell);
