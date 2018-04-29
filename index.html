@@ -118,6 +118,7 @@
 
     function update () {
         this.physics.overlap(towersGroup, shellsGroup, killTower, null, this);
+        this.physics.overlap(shellsGroup, shellsGroup, killTower, null, this);
         // set the angle according to the mouse pointer
         if (this.input.activePointer.isDown && state.active) {
             state.inaims = true;
@@ -266,8 +267,8 @@
 
     function killTower(shell, obj) {
         console.info('collide');
-        explosion.x = obj.pixelX + (obj.width / 2);
-        explosion.y = obj.pixelY - (obj.height / 2);
+        explosion.x = obj.x;
+        explosion.y = obj.y;
         explosion.anims.play('explode');
         shell.destroy();
         obj.destroy();
