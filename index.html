@@ -142,7 +142,6 @@
      ) */
 
     function createTower(obj, tower, player) {
-        console.info(tower);
         var cannon = {
             x: 0,
             y: 0,
@@ -171,17 +170,16 @@
 
     function fire(game, aa) {
         vector.clear()
-        console.info("Boom? " + aa);
         cannons[current_cannon].tower.setTexture('tower');
         // запустить снаряд
         angle = cannons[current_cannon].sprite.angle;
-        shell = game.physics.add.image(cannons[current_cannon].x + 30, cannons[current_cannon].y - 30, 'shell');
+        shell = game.physics.add.image(cannons[current_cannon].x, cannons[current_cannon].y - 128, 'shell');
         //shell.body.center.setTo(0.5, 0.5);
         shell.setAngle(angle);
         shell.setAngularDrag(1.0);
         //shell.setCollideWorldBounds(true);
         //shell.setBounce(0, 0);
-        game.physics.add.collider(shell, collisionLayer);
+        game.physics.add.collider(shell, shells, rocket_explode, null, this);
         // Вот тут мы вызываем обратные тригонометрические функции.
         // Если игра будет лагать, можно будет заоптимизировать, передавая сразу вектор
         shell.setVelocityX(aa * Math.cos(angle * Math.PI / 180));
@@ -190,17 +188,16 @@
         id++;
         shells.push(shell);
 
-        console.info('Collision layer');
-        console.info(collisionLayer);
-        game.physics.add.collider(shell, collisionLayer);
+        //game.physics.add.collider(shell, collisionLayer);
+        game.physics.add.overlap(shell, collisionLayer, rocket_explode, null, this);
 
         current_cannon = (current_cannon + 1) % cannons.length;
         cannons[current_cannon].tower.setTexture('tower_selected');
-        for (let s of shells) {
+        /*for (let s of shells) {
             console.info('shell ' + s.id + 
                 '@(' + s.x + ', ' + s.y + ')' +
                 '-> (' + s.body.velocity.x + ', ' + s.body.velocity.y + ')');
-        }
+        }*/
     }
 
 
@@ -214,6 +211,18 @@
             }
         }
         return false;
+    }
+
+    // Переопределение взрыва ракеты
+    // Здесь, по идее, надо делать выборку всех объектов, расположенных в радиусе x от ракеты и убивать их.
+    // Проверять, если среди объектов была башня, устранять её объект из массива
+    // Если чьи нить башни кончились, то гамовер.
+
+    function rocket_explode(shell, obj) {
+        console.info('Collide with ');
+        console.info(obj);
+        shell.destroy();
+        obj.destroy();
     }
 
 </script>
