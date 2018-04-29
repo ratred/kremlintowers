@@ -64,6 +64,7 @@
     var current_cannon = 0;
     var shells = [];
     var id = 0;
+    var collisionLayer;
 
     function preload() {
         this.load.tilemapTiledJSON('map', 'assets/map1.json');
@@ -79,7 +80,8 @@
         this.add.tileSprite(595, 320, 1190, 640, 'background');
         map = this.add.tilemap('map');
         var tiles = map.addTilesetImage('tiles');
-        var layer = map.createStaticLayer('kremlin', tiles);
+        collisionLayer = map.createStaticLayer('kremlin', tiles);
+        collisionLayer.setCollision([23,24], true);
         var player1_towers = map.createFromTiles(22);
         var player2_towers = map.createFromTiles(21);
 
@@ -173,12 +175,13 @@
         cannons[current_cannon].tower.setTexture('tower');
         // запустить снаряд
         angle = cannons[current_cannon].sprite.angle;
-        shell = game.physics.add.image(cannons[current_cannon].x, cannons[current_cannon].y, 'shell');
+        shell = game.physics.add.image(cannons[current_cannon].x + 30, cannons[current_cannon].y - 30, 'shell');
         //shell.body.center.setTo(0.5, 0.5);
         shell.setAngle(angle);
         shell.setAngularDrag(1.0);
-        shell.setCollideWorldBounds(true);
-        shell.setBounce(0, 0);
+        //shell.setCollideWorldBounds(true);
+        //shell.setBounce(0, 0);
+        game.physics.add.collider(shell, collisionLayer);
         // Вот тут мы вызываем обратные тригонометрические функции.
         // Если игра будет лагать, можно будет заоптимизировать, передавая сразу вектор
         shell.setVelocityX(aa * Math.cos(angle * Math.PI / 180));
@@ -186,6 +189,10 @@
         shell.id = id;
         id++;
         shells.push(shell);
+
+        console.info('Collision layer');
+        console.info(collisionLayer);
+        game.physics.add.collider(shell, collisionLayer);
 
         current_cannon = (current_cannon + 1) % cannons.length;
         cannons[current_cannon].tower.setTexture('tower_selected');
@@ -195,6 +202,10 @@
                 '-> (' + s.body.velocity.x + ', ' + s.body.velocity.y + ')');
         }
     }
+
+
+    // Проверка, что пушка в башне не вылезает за границы разрешенных ей углов.
+    // Использование: check_angle( [ [нижняя_граница, верхняя_граница], [нижняя_граница, верхняя граница] ], angle)
 
     function check_angle(allowable, angle) {
         for (let borders of allowable) {
