@@ -57,6 +57,7 @@
 
     var vector;
     var aimline;
+    var explosion;
 
     var game = new Phaser.Game(config);
 
@@ -75,6 +76,7 @@
         this.load.image('tower', 'assets/tower.png');
         this.load.image('tiles', 'assets/tiles.png');
         this.load.image('shell', 'assets/shell.png');
+        this.load.spritesheet('explosion', 'assets/explosion.png', { frameWidth: 64, frameHeight: 64, endFrame: 25});
     }
     function create() {
         this.add.tileSprite(595, 320, 1190, 640, 'background');
@@ -96,8 +98,16 @@
         // Выделяем текущую башню
         cannons[current_cannon].tower.setTexture('tower_selected');
 
-
+        // Создаём графический лучик от пушки к курсору
         vector = this.add.graphics({ lineStyle: { width: 4, color: 0xaa00aa } });
+
+        // Создаём анимированный взрыв
+        explosion = this.add.sprite(0, 0, 'explosion');
+        this.anims.create({
+            key: 'explode',
+            frames: this.anims.generateFrameNumbers('explosion', { start: 0, end: 23, first: 23 }),
+            frameRate: 20
+        });
     }
 
     function update () {
@@ -173,7 +183,8 @@
         cannons[current_cannon].tower.setTexture('tower');
         // запустить снаряд
         angle = cannons[current_cannon].sprite.angle;
-        shell = game.physics.add.image(cannons[current_cannon].x, cannons[current_cannon].y, 'shell');
+        var shell = game.physics.add.image(cannons[current_cannon].x, cannons[current_cannon].y, 'shell').setActive();
+
         //shell.body.center.setTo(0.5, 0.5);
         shell.setAngle(angle);
         shell.setAngularDrag(1.0);
@@ -189,7 +200,7 @@
         shells.push(shell);
 
         //game.physics.add.collider(shell, collisionLayer);
-        game.physics.add.overlap(shell, collisionLayer, rocket_explode, null, this);
+        //game.physics.add.overlap(shell, collisionLayer, rocket_explode, null, this);
 
         current_cannon = (current_cannon + 1) % cannons.length;
         cannons[current_cannon].tower.setTexture('tower_selected');
@@ -222,7 +233,10 @@
         if (obj.index == -1) {
             return;
         }
-        console.info('Collide with ' + obj.index);
+        console.info(obj.x)
+        explosion.x = shell.x;
+        explosion.y = shell.y;
+        explosion.anims.play('explode');
         shell.destroy();
         obj.destroy();
     }
