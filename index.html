@@ -173,13 +173,13 @@
         cannons[current_cannon].tower.setTexture('tower');
         // запустить снаряд
         angle = cannons[current_cannon].sprite.angle;
-        shell = game.physics.add.image(cannons[current_cannon].x, cannons[current_cannon].y - 128, 'shell');
+        shell = game.physics.add.image(cannons[current_cannon].x, cannons[current_cannon].y, 'shell');
         //shell.body.center.setTo(0.5, 0.5);
         shell.setAngle(angle);
         shell.setAngularDrag(1.0);
         //shell.setCollideWorldBounds(true);
         //shell.setBounce(0, 0);
-        game.physics.add.collider(shell, shells, rocket_explode, null, this);
+        game.physics.add.collider(shell, collisionLayer, rocket_explode, null, this);
         // Вот тут мы вызываем обратные тригонометрические функции.
         // Если игра будет лагать, можно будет заоптимизировать, передавая сразу вектор
         shell.setVelocityX(aa * Math.cos(angle * Math.PI / 180));
@@ -219,8 +219,10 @@
     // Если чьи нить башни кончились, то гамовер.
 
     function rocket_explode(shell, obj) {
-        console.info('Collide with ');
-        console.info(obj);
+        if (obj.index == -1) {
+            return;
+        }
+        console.info('Collide with ' + obj.index);
         shell.destroy();
         obj.destroy();
     }
