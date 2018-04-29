@@ -82,6 +82,7 @@
         var layer = map.createStaticLayer('kremlin', tiles);
         var player1_towers = map.createFromTiles(22);
         var player2_towers = map.createFromTiles(21);
+
         // Создание всех башен
 
         for (let tower of player1_towers) {
@@ -140,6 +141,7 @@
      ) */
 
     function createTower(obj, tower, player) {
+        console.info(tower);
         var cannon = {
             x: 0,
             y: 0,
@@ -147,10 +149,10 @@
 
         };
 
-        cannon.tower = obj.add.sprite(tower.x + 16, tower.y, 'tower');
+        cannon.tower = obj.add.sprite(tower.x + 16, tower.y - 32, 'tower');
         var angle;
         if (cannon.player == 1) {
-            cannon.x = tower.x + 36;
+            cannon.x = tower.x + 30;
             angle = 0;
             cannon.allowable_angle = [[0,90], [270,360]];
         } else {
@@ -159,7 +161,7 @@
             cannon.allowable_angle = [[90,270]];
         }
 
-        cannon.y = tower.y + 2;
+        cannon.y = tower.y - 20;
         cannon.sprite = obj.add.sprite(cannon.x, cannon.y, 'cannon');
         cannon.sprite.angle = angle;
         return cannon;
