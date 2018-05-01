@@ -169,8 +169,14 @@
             current_cannon = (current_cannon + 1) % cannons.length;
         }
         cannons[current_cannon].tower.setTexture('tower_selected');
-        // set the angle according to the mouse pointer
-        if (this.input.activePointer.isDown && state.active) {
+        // Проверяем чей текущий ход - человека или робота. Если робота, то стреляем сразу
+        if (cannons[current_cannon].player == 2) {
+            fire(this, state.aimlength);
+            state.active = false;
+            state.lastFireTime = Date.now();
+            state.inaims = false;
+        } else if (this.input.activePointer.isDown && state.active) {
+            // set the angle according to the mouse pointer
             state.inaims = true;
             mouseX = this.input.x;
             mouseY = this.input.y;
@@ -199,6 +205,8 @@
     }
 
     /* -- Фабрика башен. 
+
+    Тяжелое наследие рваной разработки в процессе изучения. Требует существенной переработки.
     
     API:
     createTower(obj,                  -- Объект в котором создаётся башня
@@ -502,6 +510,9 @@
     }
 
 
+
+    // Собственная функция, делающая все объекты уровня, которые мы не поменяли на прошлых этапах - коллайдящимися
+    // вместо родной функции фазера, которая почему-то кривая и не делает коллайдящимися объекты, которые окружены другими объектами.
 
     function setCollision(layer) {
         var results = [];
