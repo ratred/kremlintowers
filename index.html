@@ -92,11 +92,15 @@
         map = this.add.tilemap('map');
         var tiles = map.addTilesetImage('tiles');
         collisionLayer = map.createStaticLayer('kremlin', tiles);
+        collisionLayer.debug = true;
+
 
         var player1_towers = getTilesByIndex(collisionLayer, '22');
         var player2_towers = getTilesByIndex(collisionLayer, '21');
+
+        setCollision(collisionLayer);
         //console.info(map);
-        collisionLayer.setCollision([20,21,22,23,24,25,26],true);
+//        collisionLayer.setCollision([23, 24, 42],true, true);
 
         // Создание всех башен
 
@@ -207,9 +211,7 @@
         angle = cannons[current_cannon].sprite.angle;
         var shell = game.physics.add.image(cannons[current_cannon].x, cannons[current_cannon].y, 'shell').setActive();
         shell.setDataEnabled();
-        console.info(cannons[current_cannon].tower);
         shell.setData('parentTower', cannons[current_cannon].tower.getData('towerNum'));
-        console.info(shell.getData('parentTower'));
 
         shell.body.center.setTo(0.5, 0.5);
         shell.setAngle(angle);
@@ -261,7 +263,6 @@
         if (obj.index == -1) {
             return;
         }
-        console.info(obj);
         explosion.x = obj.pixelX + (obj.width / 2);
         explosion.y = obj.pixelY - (obj.height / 2);
         explosion.anims.play('explode');
@@ -329,6 +330,37 @@
         }
         return results;
     }
+
+
+    function getIndexses(layer, index) {
+        var results = [];
+        var height = layer.layer.height;
+        var width = layer.layer.width;
+        for ( y = 0; y < height; y++ ) {
+            for ( x = 0; x < width; x++) {
+                tile = layer.layer.data[y][x];
+            }
+        }
+        return results;
+    }
+
+
+
+    function setCollision(layer) {
+        var results = [];
+        var height = layer.layer.height;
+        var width = layer.layer.width;
+        for ( y = 0; y < height; y++ ) {
+            for ( x = 0; x < width; x++) {
+                tile = layer.layer.data[y][x];
+                if (tile.index == 23 || tile.index == 24) {
+                    tile.setCollision(true, true, true, true, false);
+                }
+            }
+        }
+        return results;
+    }
+
 
 </script>
 </body>
