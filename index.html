@@ -314,35 +314,31 @@
         // Выбираем минимальное b, удовлетворяющее всем этим условиям. Дальше вычисляется энергия выстрела, это
         // - b^2 / 4a
         distance = foreignTower.x - myCannon.x;
-        console.info("d = " + distance);
         height = myCannon.y - foreignTower.y;
+        console.info("d = " + distance + ", h = " + height);
         sign = Math.sign(distance);
         bmin = 0.5;
         rect = new Phaser.Geom.Rectangle(myCannon.x / tileToPixelsX, 0, distance, map.height);
         rectLeftLimit = Math.min(myCannon.x, foreignTower.x) + tileToPixelsX;
         rectRightLimit = Math.max(myCannon.x, foreignTower.x) - tileToPixelsX;
         rectWidth = Math.abs(rectLeftLimit - rectRightLimit);
-        obstacles = map.getTilesWithinWorldXY(rectLeftLimit, 0, rectWidth, config.height);
+        rectUpperLimit = 0;
+        rectLowerLimit = Math.max(myCannon.y, foreignTower.y);
+        rectHeight = rectLowerLimit - rectUpperLimit;
+        obstacles = map.getTilesWithinWorldXY(rectLeftLimit, rectUpperLimit, rectWidth, rectHeight);
         hasObstacles = false;
         console.info("cannon@" + myCannon.x + ", " + myCannon.y);
         for (let obstacle of obstacles) {
             isCollidable = obstacle.index > 0;
-            if (isCollidable && obstacle != foreignTower) {
+            if (isCollidable && obstacle != foreignTower && obstacle != myCannon.tower) {
                 distance_obstacle = obstacle.pixelX - myCannon.x;
-                console.log("obstacle@" + obstacle.pixelX + ", " + obstacle.pixelY);
-                console.log("do = " + distance_obstacle);
-                height_obstacle = myCannon.y - obstacle.pixelY + 64; // invert y in order to think less
+                //console.log("obstacle@" + obstacle.pixelX + ", " + obstacle.pixelY);
+                height_obstacle = myCannon.y - obstacle.pixelY + 96; // invert y in order to think less
                 distance_fraction = distance_obstacle / distance; // must be positive and less than one
-                console.info("d/do = " + distance_fraction);
                 distance_fraction_squared = Math.pow(distance_fraction, 2);
                 blimit = (height_obstacle - height * distance_fraction_squared) / (distance_obstacle * (1 - distance_fraction));
-                console.info("blimit = " + blimit);
-                bmin = Math.max(bmin, blimit);
-                hasObstacles = true;
+                bmin = Math.max(bmin, Math.abs(blimit));
             }
-        }
-        if (!hasObstacles) {
-            bmin = 0.5;
         }
         a = (height - bmin * distance) / Math.pow(distance, 2);
         // Здесь мы рассчитали параметры параболы. Осталось их перевести в скорость.
@@ -353,7 +349,7 @@
         // 2 * a * v_x = -g <=> v_x = -g / (2 * a)
         // Только альтернативно ориентированный фазер в это не верит.
         g = config.physics.arcade.gravity.y;
-        velocityX = -g / (2 * a);
+        velocityX = (-g / (2 * a)) / 50; // Поделим ускорение на фреймрейт
         velocityY = bmin * velocityX;
         angle = Math.atan(bmin);
         hcomputed = a * distance * distance + bmin * distance;
