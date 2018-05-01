@@ -15,7 +15,7 @@
             default: 'arcade',
             arcade: {
                 gravity: {y: 10},
-                debug: true,
+//                debug: true,
             }
         },
         scene: {
@@ -24,44 +24,21 @@
             update: update
         }
     };
-    var level = {
-        playerTower: 
-            {
-                x: 50,
-                y: 430,
-            },
-        towers: [
-            {
-                x: 100,
-                y: 450,
-                player: 1
-            },
-            {
-                x: 700,
-                y: 300, 
-                player: 2
-            },
-            {
-                x: 300,
-                y: 450,
-                player: 2
-            },
-        ]
-    };
+
     var state = {
-        cannon : {
-            x: 200,
-            y: 200
-        },
         active: true,
         inaims: false,
         aimlength: 0,
         lastFireTime: 0
     };
 
+    var maps = ['map3', 'map1'];
+    var current_map = 0;
+
     var vector;
     var aimline;
     var explosion;
+    var gameover;
 
     var game = new Phaser.Game(config);
 
@@ -72,15 +49,35 @@
     var collisionLayer;
     var towersGroup;
     var shellsGroup;
+    var stateText;
+
+    function reset() {
+        current_map++;
+        cannons = [];
+        current_cannon = 0;
+        shells = [];
+        id = 0;
+        collisionLayer = false;
+        towersGroup = false;
+        shellsGroup = false;
+        stateText = '';
+        state = {
+            active: true,
+            inaims: false,
+            aimlength: 0,
+            lastFireTime: 0
+        };
+        game = new Phaser.Game(config);
+    }
 
     function preload() {
-        this.load.tilemapTiledJSON('map', 'assets/map1.json');
+        this.load.tilemapTiledJSON('map', 'assets/' + maps[current_map] + '.json');
         this.load.image('bullet', 'assets/bullet.png');
         this.load.image('cannon', 'assets/cannon.png');
         this.load.image('tower_selected', 'assets/tower_selected.png');
         this.load.image('background', 'assets/background.jpg');
         this.load.image('tower', 'assets/tower.png');
-        this.load.image('tiles', 'assets/tiles.png');
+        this.load.image('kremlinstower2', 'assets/tiles2.png');
         this.load.image('shell', 'assets/shell.png');
         this.load.spritesheet('explosion', 'assets/explosion.png', { frameWidth: 64, frameHeight: 64, endFrame: 25});
     }
@@ -90,17 +87,14 @@
 
         this.add.tileSprite(595, 320, 1190, 640, 'background');
         map = this.add.tilemap('map');
-        var tiles = map.addTilesetImage('tiles');
+        var tiles = map.addTilesetImage('kremlinstower2');
         collisionLayer = map.createStaticLayer('kremlin', tiles);
-        collisionLayer.debug = true;
 
 
-        var player1_towers = getTilesByIndex(collisionLayer, '22');
-        var player2_towers = getTilesByIndex(collisionLayer, '21');
+        var player1_towers = getTilesByIndex(collisionLayer, '11');
+        var player2_towers = getTilesByIndex(collisionLayer, '13');
 
         setCollision(collisionLayer);
-        //console.info(map);
-//        collisionLayer.setCollision([23, 24, 42],true, true);
 
         // Создание всех башен
 
@@ -125,9 +119,48 @@
             frames: this.anims.generateFrameNumbers('explosion', { start: 0, end: 23, first: 23 }),
             frameRate: 20
         });
+
+        // Рисуем невидимый текст в центре экрана
+
+        stateText = this.add.text(100, 200, ' ', { fontFamily: 'Arial', fontSize: 64, color: '#00ff00' });
+        //stateText.anchor.setTo(0.5, 0.5);
+        stateText.visible = false;    
     }
 
     function update () {
+        if (gameover) {
+            if (this.input.activePointer.isDown) {
+                reset();
+                return;
+            } else {
+                return;
+            }
+
+        }
+        var p1_alive = 0;
+        var p2_alive = 0;
+
+        for (var c in cannons) {
+            if (cannons[c].player == 1 && ( !cannons[c].destroyed)) {
+                p1_alive ++;
+            } else if (cannons[c].player == 2 && ( !cannons[c].destroyed)) {
+                p2_alive ++;
+            }
+        }
+
+        if (p1_alive == 0) {
+            console.info('p1 gameover');
+            stateText = 'Game Over.\nPlayer 1 wins.\nClick here to next level';
+            stateText.visible = true;
+            gameover = true;
+        }
+
+        if (p2_alive == 0) {
+            console.info('p2 gameover');
+            stateText = 'Game Over.\nPlayer 2 wins.\nClick here to next level';
+            stateText.visible = true;
+            gameover = true;
+        }
         this.physics.overlap(towersGroup, shellsGroup, killTower, null, this);
         this.physics.overlap(shellsGroup, shellsGroup, rocketRocket, null, this);
         // Смещаем указатель на следующую башню, если текущая уничтожена
@@ -323,6 +356,7 @@
         for ( y = 0; y < height; y++ ) {
             for ( x = 0; x < width; x++) {
                 tile = layer.layer.data[y][x];
+                console.info('Index: ', tile.index);
                 if (tile.index == index) {
                     results.push(tile);
                 }
@@ -353,7 +387,7 @@
         for ( y = 0; y < height; y++ ) {
             for ( x = 0; x < width; x++) {
                 tile = layer.layer.data[y][x];
-                if (tile.index == 23 || tile.index == 24) {
+                if (tile.index > -1 && tile.index < 10) {
                     tile.setCollision(true, true, true, true, false);
                 }
             }
