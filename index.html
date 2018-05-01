@@ -393,16 +393,16 @@
 
             // Внесём возмущение в ускорения
 
-            velocityX += getRandomInt(0,150);
-            velocityY += getRandomInt(0,150);
+            velocityX += (getRandomInt(0,300) - 150);
+            velocityY += (getRandomInt(0,300) - 150);
         }
         console.info("Угол с возмущением: " + angle);
         console.info("Ускорение с возмущением: " + velocityX + ", " + velocityY);
 
         return {
-            angle: angle,
+            angle: sign * angle * 180 / Math.PI,
             x: velocityX,
-            y: -velocityY * Math.sign(distance)
+            y: -velocityY * sign
         };
     }
 
