@@ -51,6 +51,8 @@
     var shellsGroup;
     var map;
     var stateText;
+    var player_shells = {1: 'caliber_shell', 2: 'paper_shell'};
+
 
     function reset() {
         current_map++;
@@ -82,6 +84,8 @@
         this.load.image('tower2', 'assets/tower2.png');
         this.load.image('kremlinstower2', 'assets/tiles2.png');
         this.load.image('shell', 'assets/shell.png');
+        this.load.image('paper_shell', 'assets/paper_shell.png');
+        this.load.image('caliber_shell', 'assets/caliber_shell.png');
         this.load.spritesheet('explosion', 'assets/explosion.png', { frameWidth: 64, frameHeight: 64, endFrame: 25});
     }
     function create() {
@@ -283,7 +287,7 @@
 
         // запустить снаряд
         angle = cannons[current_cannon].sprite.angle;
-        var shell = game.physics.add.image(cannons[current_cannon].x, cannons[current_cannon].y, 'shell').setActive();
+        var shell = game.physics.add.image(cannons[current_cannon].x, cannons[current_cannon].y, player_shells[cannons[current_cannon].player]).setActive();
         shell.setDataEnabled();
         shell.setData('parentTower', cannons[current_cannon].tower.getData('towerNum'));
 
