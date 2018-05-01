@@ -100,9 +100,11 @@
 
         for (let tower of player1_towers) {
             cannons.push(createTower(this, tower, 1));
+            cannons[cannons.length-1].tower.setData('towerNum', cannons.length-1);
         }
         for (let tower of player2_towers) {
             cannons.push(createTower(this, tower, 2));
+            cannons[cannons.length-1].tower.setData('towerNum', cannons.length-1);
         }
         // Выделяем текущую башню
         cannons[current_cannon].tower.setTexture('tower_selected');
@@ -122,6 +124,11 @@
     function update () {
         this.physics.overlap(towersGroup, shellsGroup, killTower, null, this);
         this.physics.overlap(shellsGroup, shellsGroup, killTower, null, this);
+        // Смещаем указатель на следующую башню, если текущая уничтожена
+        while (cannons[current_cannon].destroyed) {
+            current_cannon = (current_cannon + 1) % cannons.length;
+        }
+        cannons[current_cannon].tower.setTexture('tower_selected');
         // set the angle according to the mouse pointer
         if (this.input.activePointer.isDown && state.active) {
             state.inaims = true;
@@ -184,7 +191,6 @@
             angle = 180;
             cannon.allowable_angle = [[90,270]];
         }
-
         cannon.y = tower.y - 20;
         cannon.sprite = obj.add.sprite(cannon.x, cannon.y, 'cannon');
         cannon.sprite.angle = angle;
@@ -199,7 +205,10 @@
         // запустить снаряд
         angle = cannons[current_cannon].sprite.angle;
         var shell = game.physics.add.image(cannons[current_cannon].x, cannons[current_cannon].y, 'shell').setActive();
-        shell.name = current_cannon;
+        shell.setDataEnabled();
+        console.info(cannons[current_cannon].tower);
+        shell.setData('parentTower', cannons[current_cannon].tower.getData('towerNum'));
+        console.info(shell.getData('parentTower'));
 
         shell.body.center.setTo(0.5, 0.5);
         shell.setAngle(angle);
@@ -218,6 +227,9 @@
         shells.push(shell);
 
         current_cannon = (current_cannon + 1) % cannons.length;
+        while (cannons[current_cannon].destroyed) {
+            current_cannon = (current_cannon + 1) % cannons.length;
+        }
         cannons[current_cannon].tower.setTexture('tower_selected');
         /*for (let s of shells) {
             console.info('shell ' + s.id + 
@@ -271,13 +283,21 @@
     }
 
     function killTower(shell, obj) {
-        console.info(shell.name);
-        if (shell.name == current_cannon) {
+
+        // Снаряд не коллайдится с собственной башней. Ну чтобы не.
+        if (shell.getData('parentTower') == obj.getData('towerNum')) {
             return;
         }
+
+        // Взрыв
         explosion.x = obj.x;
         explosion.y = obj.y;
         explosion.anims.play('explode');
+
+        // Отмечаем башню в массиве, как удалённую
+
+        cannons[obj.getData('towerNum')].destroyed = true;
+
         shell.destroy();
         obj.destroy();
     }
