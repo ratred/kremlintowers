@@ -49,6 +49,7 @@
     var collisionLayer;
     var towersGroup;
     var shellsGroup;
+    var map;
     var stateText;
 
     function reset() {
@@ -240,6 +241,8 @@
     function fire(game, aa) {
         vector.clear()
         cannons[current_cannon].tower.setTexture('tower');
+        aiParams = getAIFireVector(game, cannons[current_cannon]);
+
         // запустить снаряд
         angle = cannons[current_cannon].sprite.angle;
         var shell = game.physics.add.image(cannons[current_cannon].x, cannons[current_cannon].y, 'shell').setActive();
@@ -248,7 +251,7 @@
 
         shell.body.center.setTo(0.5, 0.5);
         shell.setAngle(angle);
-        shell.setAngularDrag(1.0);
+        //shell.setAngularDrag(1.0);
         game.physics.add.collider(shell, collisionLayer, rocket_explode, null, this);
         game.physics.add.collider(shell, towersGroup, killTower, null, this);
 
@@ -257,6 +260,12 @@
 
         shell.setVelocityX(aa * Math.cos(angle * Math.PI / 180));
         shell.setVelocityY(aa * Math.sin(angle * Math.PI / 180));
+        // debug!
+        if (cannons[current_cannon].player == 2) {
+            shell.setAngle(aiParams.angle);
+            shell.setVelocityX(aiParams.x);
+            shell.setVelocityY(aiParams.y);
+        }
         shell.id = id;
         id++;
         shellsGroup.add(shell);
@@ -272,6 +281,88 @@
                 '@(' + s.x + ', ' + s.y + ')' +
                 '-> (' + s.body.velocity.x + ', ' + s.body.velocity.y + ')');
         }*/
+    }
+
+    function getAIFireVector(game, myCannon) {
+        // Во-1х, надо найти ближайшую башню.
+        tileToPixelsX = map.widthInPixels / map.width;
+        tileToPixelsY = map.heightInPixels / map.height;
+        foreignTower = null;
+        minimalDistance = config.width;
+        for (let cannon of cannons) {
+            if (cannon.player != myCannon.player && !cannon.destroyed) {
+                distance = Math.abs(myCannon.x - cannon.tower.x);
+                if (distance < minimalDistance) {
+                    minimalDistance = distance;
+                    foreignTower = cannon.tower;
+                }
+            }
+        }
+
+        console.info("Minimal distance is " + minimalDistance);
+        // Теперь мы нашли башню и теоретически можем рассчитать параболу.
+        // Что-то я разучится считать банальные вещи.
+        // Суть такова: Мы считаем параболу типа ax^2 + bx + c со следующими условиями:
+        // c = 0 (т. к. в нуле снаряд никуда не летит)
+        // a * d^2 + b * d = h <=> a = (h - b * d) / d^2 (т.к. на расстоянии d снаряд находится на высоте h) (*)
+        // Таким образом парабола зависит от одного параметра, b
+        // Путём несложных манипуляций можно посчитать, что b -- это тангенс угла возвышения
+        // Далее нам надо выстрелить поверх всех препятствий.
+        // Получаем уравнения вида a * (d_o^2) + b * d_o > h_o
+        // Эти уравнения с помощью (*) превращаются в
+        // (h - b * d) / d^2 * (d_o^2) + b * d_o > h_o
+        // <=> b * (-d * d_o^2 / d^2 + d_o) > h_o - h * d_o^2 / d^2
+        // <=> b > (h_o - h * d_o^2 / d^2) / (-d * d_o^2 / d^2 + d_o)
+        // Выбираем минимальное b, удовлетворяющее всем этим условиям. Дальше вычисляется энергия выстрела, это
+        // - b^2 / 4a
+        distance = foreignTower.x - myCannon.x;
+        height = myCannon.y - foreignTower.y;
+        console.info("d = " + distance + ", h = " + height);
+        sign = Math.sign(distance);
+        bmin = 0.5;
+        rect = new Phaser.Geom.Rectangle(myCannon.x / tileToPixelsX, 0, distance, map.height);
+        rectLeftLimit = Math.min(myCannon.x, foreignTower.x) + tileToPixelsX;
+        rectRightLimit = Math.max(myCannon.x, foreignTower.x) - tileToPixelsX;
+        rectWidth = Math.abs(rectLeftLimit - rectRightLimit);
+        rectUpperLimit = 0;
+        rectLowerLimit = Math.max(myCannon.y, foreignTower.y);
+        rectHeight = rectLowerLimit - rectUpperLimit;
+        obstacles = map.getTilesWithinWorldXY(rectLeftLimit, rectUpperLimit, rectWidth, rectHeight);
+        hasObstacles = false;
+        console.info("cannon@" + myCannon.x + ", " + myCannon.y);
+        for (let obstacle of obstacles) {
+            isCollidable = obstacle.index > 0;
+            if (isCollidable && obstacle != foreignTower && obstacle != myCannon.tower) {
+                distance_obstacle = obstacle.pixelX - myCannon.x;
+                //console.log("obstacle@" + obstacle.pixelX + ", " + obstacle.pixelY);
+                height_obstacle = myCannon.y - obstacle.pixelY + 96; // invert y in order to think less
+                distance_fraction = distance_obstacle / distance; // must be positive and less than one
+                distance_fraction_squared = Math.pow(distance_fraction, 2);
+                blimit = (height_obstacle - height * distance_fraction_squared) / (distance_obstacle * (1 - distance_fraction));
+                bmin = Math.max(bmin, Math.abs(blimit));
+            }
+        }
+        a = (height - bmin * distance) / Math.pow(distance, 2);
+        // Здесь мы рассчитали параметры параболы. Осталось их перевести в скорость.
+        // Воспользуемся матаном. Мы знаем, что
+        // d^2 y / d t = -g
+        // d^2 y / d x = 2a
+        // d^2 y / d x * (d x / d t) = d^2 y / d t
+        // 2 * a * v_x = -g <=> v_x = -g / (2 * a)
+        // Только альтернативно ориентированный фазер в это не верит.
+        g = config.physics.arcade.gravity.y;
+        velocityX = (-g / (2 * a)) / 50; // Поделим ускорение на фреймрейт
+        velocityY = bmin * velocityX;
+        angle = Math.atan(bmin);
+        hcomputed = a * distance * distance + bmin * distance;
+        console.info("parable params are: a=" + a + ", b=" + bmin);
+        console.info("height: " + hcomputed + ", actual: " + height);
+        console.info("shell velocity is " + velocityX + ", " + velocityY);
+        return {
+            angle: angle,
+            x: velocityX,
+            y: -velocityY * Math.sign(distance)
+        };
     }
 
 
