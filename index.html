@@ -284,6 +284,20 @@
     }
 
     function getAIFireVector(game, myCannon) {
+        // В нулевых убедимся, что на этом ходу робот не ебанулся и не выстрелит на случайный угол (вероятность 10%)
+
+        if (getRandomInt(0,100) < 10) {
+            console.info('Ебанувшийся робот стреляет на случайный угол со случайной скоростью')
+
+            return {
+                angle: getRandomInt(90,180),
+                x: getRandomInt(100,1000),
+                y: getRandomInt(100,1000)
+            };
+
+
+        } 
+
         // Во-1х, надо найти ближайшую башню.
         tileToPixelsX = map.widthInPixels / map.width;
         tileToPixelsY = map.heightInPixels / map.height;
@@ -358,6 +372,25 @@
         console.info("parable params are: a=" + a + ", b=" + bmin);
         console.info("height: " + hcomputed + ", actual: " + height);
         console.info("shell velocity is " + velocityX + ", " + velocityY);
+        // Кинем монетку, вносить ли возмущение
+
+        coin = getRandomInt(0,3);
+        console.info('Coin: ' + coin);
+
+        // Внесём возмущение в угол
+
+        if (coin == 1 || coin == 3) {
+            angle += getRandomInt(0,3);
+        } else if (coin == 2 || coin == 3) {
+
+            // Внесём возмущение в ускорения
+
+            velocityX += getRandomInt(0,150);
+            velocityY += getRandomInt(0,150);
+        }
+        console.info("Угол с возмущением: " + angle);
+        console.info("Ускорение с возмущением: " + velocityX + ", " + velocityY);
+
         return {
             angle: angle,
             x: velocityX,
@@ -485,6 +518,9 @@
         return results;
     }
 
+    function getRandomInt(min, max) {
+      return Math.floor(Math.random() * (max - min)) + min;
+    }
 
 </script>
 </body>
