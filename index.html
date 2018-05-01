@@ -15,7 +15,7 @@
             default: 'arcade',
             arcade: {
                 gravity: {y: 10},
-                debug: true,
+//                debug: true,
             }
         },
         scene: {
@@ -24,44 +24,21 @@
             update: update
         }
     };
-    var level = {
-        playerTower: 
-            {
-                x: 50,
-                y: 430,
-            },
-        towers: [
-            {
-                x: 100,
-                y: 450,
-                player: 1
-            },
-            {
-                x: 700,
-                y: 300, 
-                player: 2
-            },
-            {
-                x: 300,
-                y: 450,
-                player: 2
-            },
-        ]
-    };
+
     var state = {
-        cannon : {
-            x: 200,
-            y: 200
-        },
         active: true,
         inaims: false,
         aimlength: 0,
         lastFireTime: 0
     };
 
+    var maps = ['map3', 'map1'];
+    var current_map = 0;
+
     var vector;
     var aimline;
     var explosion;
+    var gameover;
 
     var game = new Phaser.Game(config);
 
@@ -73,16 +50,35 @@
     var towersGroup;
     var shellsGroup;
     var map;
-    var obstacle_classes = [20,21,22,23,24,25,26];
+    var stateText;
+
+    function reset() {
+        current_map++;
+        cannons = [];
+        current_cannon = 0;
+        shells = [];
+        id = 0;
+        collisionLayer = false;
+        towersGroup = false;
+        shellsGroup = false;
+        stateText = '';
+        state = {
+            active: true,
+            inaims: false,
+            aimlength: 0,
+            lastFireTime: 0
+        };
+        game = new Phaser.Game(config);
+    }
 
     function preload() {
-        this.load.tilemapTiledJSON('map', 'assets/map1.json');
+        this.load.tilemapTiledJSON('map', 'assets/' + maps[current_map] + '.json');
         this.load.image('bullet', 'assets/bullet.png');
         this.load.image('cannon', 'assets/cannon.png');
         this.load.image('tower_selected', 'assets/tower_selected.png');
         this.load.image('background', 'assets/background.jpg');
         this.load.image('tower', 'assets/tower.png');
-        this.load.image('tiles', 'assets/tiles.png');
+        this.load.image('kremlinstower2', 'assets/tiles2.png');
         this.load.image('shell', 'assets/shell.png');
         this.load.spritesheet('explosion', 'assets/explosion.png', { frameWidth: 64, frameHeight: 64, endFrame: 25});
     }
@@ -92,11 +88,14 @@
 
         this.add.tileSprite(595, 320, 1190, 640, 'background');
         map = this.add.tilemap('map');
-        var tiles = map.addTilesetImage('tiles');
+        var tiles = map.addTilesetImage('kremlinstower2');
         collisionLayer = map.createStaticLayer('kremlin', tiles);
-        collisionLayer.setCollision(obstacle_classes, true);
-        var player1_towers = map.createFromTiles(22);
-        var player2_towers = map.createFromTiles(21);
+
+
+        var player1_towers = getTilesByIndex(collisionLayer, '11');
+        var player2_towers = getTilesByIndex(collisionLayer, '13');
+
+        setCollision(collisionLayer);
 
         // Создание всех башен
 
@@ -121,9 +120,48 @@
             frames: this.anims.generateFrameNumbers('explosion', { start: 0, end: 23, first: 23 }),
             frameRate: 20
         });
+
+        // Рисуем невидимый текст в центре экрана
+
+        stateText = this.add.text(100, 200, ' ', { fontFamily: 'Arial', fontSize: 64, color: '#00ff00' });
+        //stateText.anchor.setTo(0.5, 0.5);
+        stateText.visible = false;    
     }
 
     function update () {
+        if (gameover) {
+            if (this.input.activePointer.isDown) {
+                reset();
+                return;
+            } else {
+                return;
+            }
+
+        }
+        var p1_alive = 0;
+        var p2_alive = 0;
+
+        for (var c in cannons) {
+            if (cannons[c].player == 1 && ( !cannons[c].destroyed)) {
+                p1_alive ++;
+            } else if (cannons[c].player == 2 && ( !cannons[c].destroyed)) {
+                p2_alive ++;
+            }
+        }
+
+        if (p1_alive == 0) {
+            console.info('p1 gameover');
+            stateText = 'Game Over.\nPlayer 1 wins.\nClick here to next level';
+            stateText.visible = true;
+            gameover = true;
+        }
+
+        if (p2_alive == 0) {
+            console.info('p2 gameover');
+            stateText = 'Game Over.\nPlayer 2 wins.\nClick here to next level';
+            stateText.visible = true;
+            gameover = true;
+        }
         this.physics.overlap(towersGroup, shellsGroup, killTower, null, this);
         this.physics.overlap(shellsGroup, shellsGroup, rocketRocket, null, this);
         // Смещаем указатель на следующую башню, если текущая уничтожена
@@ -179,20 +217,20 @@
 
         };
 
-        cannon.tower = obj.physics.add.image(tower.x + 16, tower.y - 32, 'tower');
+        cannon.tower = obj.physics.add.image(tower.pixelX + 16, tower.pixelY - 76, 'tower');
         cannon.tower.body.allowGravity = false;
         hideTile(tower);
         var angle;
         if (cannon.player == 1) {
-            cannon.x = tower.x + 30;
+            cannon.x = tower.pixelX + 30;
             angle = 0;
             cannon.allowable_angle = [[0,90], [270,360]];
         } else {
-            cannon.x = tower.x;
+            cannon.x = tower.pixelX;
             angle = 180;
             cannon.allowable_angle = [[90,270]];
         }
-        cannon.y = tower.y - 20;
+        cannon.y = tower.pixelY - 60;
         cannon.sprite = obj.add.sprite(cannon.x, cannon.y, 'cannon');
         cannon.sprite.angle = angle;
         towersGroup.add(cannon.tower);
@@ -209,9 +247,7 @@
         angle = cannons[current_cannon].sprite.angle;
         var shell = game.physics.add.image(cannons[current_cannon].x, cannons[current_cannon].y, 'shell').setActive();
         shell.setDataEnabled();
-        console.info(cannons[current_cannon].tower);
         shell.setData('parentTower', cannons[current_cannon].tower.getData('towerNum'));
-        console.info(shell.getData('parentTower'));
 
         shell.body.center.setTo(0.5, 0.5);
         shell.setAngle(angle);
@@ -290,12 +326,7 @@
         hasObstacles = false;
         console.info("cannon@" + myCannon.x + ", " + myCannon.y);
         for (let obstacle of obstacles) {
-            isCollidable = false;
-            for (let index of obstacle_classes) {
-                if (index == obstacle.index) {
-                    isCollidable = true;
-                }
-            }
+            isCollidable = obstacle.index > 0;
             if (isCollidable && obstacle != foreignTower) {
                 distance_obstacle = obstacle.pixelX - myCannon.x;
                 console.log("obstacle@" + obstacle.pixelX + ", " + obstacle.pixelY);
@@ -358,7 +389,6 @@
         if (obj.index == -1) {
             return;
         }
-        console.info(obj);
         explosion.x = obj.pixelX + (obj.width / 2);
         explosion.y = obj.pixelY - (obj.height / 2);
         explosion.anims.play('explode');
@@ -408,6 +438,54 @@
         explosion.anims.play('explode');
         shell.destroy();
         obj.destroy();
+    }
+
+    // Выборка башен по id из уровня вместо createFromTiles
+
+    function getTilesByIndex(layer, index) {
+        var results = [];
+        var height = layer.layer.height;
+        var width = layer.layer.width;
+        for ( y = 0; y < height; y++ ) {
+            for ( x = 0; x < width; x++) {
+                tile = layer.layer.data[y][x];
+                console.info('Index: ', tile.index);
+                if (tile.index == index) {
+                    results.push(tile);
+                }
+            }
+        }
+        return results;
+    }
+
+
+    function getIndexses(layer, index) {
+        var results = [];
+        var height = layer.layer.height;
+        var width = layer.layer.width;
+        for ( y = 0; y < height; y++ ) {
+            for ( x = 0; x < width; x++) {
+                tile = layer.layer.data[y][x];
+            }
+        }
+        return results;
+    }
+
+
+
+    function setCollision(layer) {
+        var results = [];
+        var height = layer.layer.height;
+        var width = layer.layer.width;
+        for ( y = 0; y < height; y++ ) {
+            for ( x = 0; x < width; x++) {
+                tile = layer.layer.data[y][x];
+                if (tile.index > -1 && tile.index < 10) {
+                    tile.setCollision(true, true, true, true, false);
+                }
+            }
+        }
+        return results;
     }
 
 
