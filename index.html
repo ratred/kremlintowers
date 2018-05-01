@@ -92,9 +92,11 @@
         map = this.add.tilemap('map');
         var tiles = map.addTilesetImage('tiles');
         collisionLayer = map.createStaticLayer('kremlin', tiles);
+
+        var player1_towers = getTilesByIndex(collisionLayer, '22');
+        var player2_towers = getTilesByIndex(collisionLayer, '21');
+        //console.info(map);
         collisionLayer.setCollision([20,21,22,23,24,25,26],true);
-        var player1_towers = map.createFromTiles(22);
-        var player2_towers = map.createFromTiles(21);
 
         // Создание всех башен
 
@@ -177,20 +179,20 @@
 
         };
 
-        cannon.tower = obj.physics.add.image(tower.x + 16, tower.y - 32, 'tower');
+        cannon.tower = obj.physics.add.image(tower.pixelX + 16, tower.pixelY - 76, 'tower');
         cannon.tower.body.allowGravity = false;
         hideTile(tower);
         var angle;
         if (cannon.player == 1) {
-            cannon.x = tower.x + 30;
+            cannon.x = tower.pixelX + 30;
             angle = 0;
             cannon.allowable_angle = [[0,90], [270,360]];
         } else {
-            cannon.x = tower.x;
+            cannon.x = tower.pixelX;
             angle = 180;
             cannon.allowable_angle = [[90,270]];
         }
-        cannon.y = tower.y - 20;
+        cannon.y = tower.pixelY - 60;
         cannon.sprite = obj.add.sprite(cannon.x, cannon.y, 'cannon');
         cannon.sprite.angle = angle;
         towersGroup.add(cannon.tower);
@@ -311,6 +313,22 @@
         obj.destroy();
     }
 
+    // Выборка башен по id из уровня вместо createFromTiles
+
+    function getTilesByIndex(layer, index) {
+        var results = [];
+        var height = layer.layer.height;
+        var width = layer.layer.width;
+        for ( y = 0; y < height; y++ ) {
+            for ( x = 0; x < width; x++) {
+                tile = layer.layer.data[y][x];
+                if (tile.index == index) {
+                    results.push(tile);
+                }
+            }
+        }
+        return results;
+    }
 
 </script>
 </body>
