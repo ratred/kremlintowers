@@ -169,7 +169,8 @@
 
         hideTile(tower);
 
-        cannon.tower = obj.add.sprite(tower.x + 16, tower.y - 32, 'tower');
+        cannon.tower = obj.physics.add.image(tower.x + 16, tower.y - 32, 'tower');
+        cannon.tower.body.allowGravity = false;
         var angle;
         if (cannon.player == 1) {
             cannon.x = tower.x + 30;
@@ -195,6 +196,7 @@
         // запустить снаряд
         angle = cannons[current_cannon].sprite.angle;
         var shell = game.physics.add.image(cannons[current_cannon].x, cannons[current_cannon].y, 'shell').setActive();
+        shell.name = current_cannon;
 
         shell.body.center.setTo(0.5, 0.5);
         shell.setAngle(angle);
@@ -266,7 +268,10 @@
     }
 
     function killTower(shell, obj) {
-        console.info('collide');
+        console.info(shell.name);
+        if (shell.name == current_cannon) {
+            return;
+        }
         explosion.x = obj.x;
         explosion.y = obj.y;
         explosion.anims.play('explode');
