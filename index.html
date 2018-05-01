@@ -123,7 +123,7 @@
 
     function update () {
         this.physics.overlap(towersGroup, shellsGroup, killTower, null, this);
-        this.physics.overlap(shellsGroup, shellsGroup, killTower, null, this);
+        this.physics.overlap(shellsGroup, shellsGroup, rocketRocket, null, this);
         // Смещаем указатель на следующую башню, если текущая уничтожена
         while (cannons[current_cannon].destroyed) {
             current_cannon = (current_cannon + 1) % cannons.length;
@@ -300,6 +300,17 @@
         shell.destroy();
         obj.destroy();
     }
+
+    // Попадание ракеты в ракету
+
+    function rocketRocket(shell, obj) {
+        explosion.x = obj.x;
+        explosion.y = obj.y;
+        explosion.anims.play('explode');
+        shell.destroy();
+        obj.destroy();
+    }
+
 
 </script>
 </body>
