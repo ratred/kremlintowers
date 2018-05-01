@@ -261,9 +261,11 @@
         shell.setVelocityX(aa * Math.cos(angle * Math.PI / 180));
         shell.setVelocityY(aa * Math.sin(angle * Math.PI / 180));
         // debug!
-        shell.setAngle(aiParams.angle);
-        shell.setVelocityX(aiParams.x);
-        shell.setVelocityY(aiParams.y);
+        if (cannons[current_cannon].player == 2) {
+            shell.setAngle(aiParams.angle);
+            shell.setVelocityX(aiParams.x);
+            shell.setVelocityY(aiParams.y);
+        }
         shell.id = id;
         id++;
         shellsGroup.add(shell);
