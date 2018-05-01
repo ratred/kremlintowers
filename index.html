@@ -177,10 +177,9 @@
 
         };
 
-        hideTile(tower);
-
         cannon.tower = obj.physics.add.image(tower.x + 16, tower.y - 32, 'tower');
         cannon.tower.body.allowGravity = false;
+        hideTile(tower);
         var angle;
         if (cannon.player == 1) {
             cannon.x = tower.x + 30;
@@ -297,7 +296,7 @@
         // Отмечаем башню в массиве, как удалённую
 
         cannons[obj.getData('towerNum')].destroyed = true;
-
+        cannons[obj.getData('towerNum')].sprite.destroy();
         shell.destroy();
         obj.destroy();
     }
