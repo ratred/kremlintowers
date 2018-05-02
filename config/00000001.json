@@ -1,0 +1,8 @@
+{
+  "type":"level",
+  "images":[],
+  "texts":[],
+  "map":"assets/map4.json",
+  "background":"assets/background.jpg",
+  "nextlevel":"00000002"
+}

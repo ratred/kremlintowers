@@ -4,9 +4,35 @@
     <title>Kremlin towers</title>
     <meta charset="utf-8" />
 <script src="phaser.js"></script>
+<script src="jquery.js"></script>
 </head>
 <body>
 <script type="text/javascript">
+
+    // Предсоздаём все многочисленные глобальные переменные (надо это, сука, рефакторить)
+
+    var config_main_menu = {
+        type: Phaser.AUTO,
+        width: 1136,
+        height: 640,
+        scene: {
+            preload: preload_menu,
+            create: create_menu,
+            update: update_menu
+        }
+    };
+
+    var config_intro = {
+        type: Phaser.AUTO,
+        width: 1136,
+        height: 640,
+        scene: {
+            preload: preload_intro,
+            create: create_intro,
+            update: update_intro
+        }
+    };
+
     var config = {
         type: Phaser.AUTO,
         width: 1136,
@@ -25,6 +51,10 @@
         }
     };
 
+
+
+
+
     var state = {
         active: true,
         inaims: false,
@@ -32,15 +62,18 @@
         lastFireTime: 0
     };
 
-    var maps = ['map3', 'map1'];
-    var current_map = 0;
-
+    current_level = false;
     var vector;
     var aimline;
     var explosion;
     var gameover;
+    var gameover_reacted = false;
 
-    var game = new Phaser.Game(config);
+    var game;
+    if (!current_level) {
+    } else {
+        game = new Phaser.Game(config);
+    }
 
     var cannons = [];
     var current_cannon = 0;
@@ -51,46 +84,92 @@
     var shellsGroup;
     var map;
     var stateText;
+    var box;
+
+    // Какой игрок какими снарядами играет
+
     var player_shells = {1: 'caliber_shell', 2: 'paper_shell'};
 
+    // Индекс тайла, который заменяется на башню игрока. 
+    // формат обращения: player_towers[1][1] - индекс первой башни первого игрока.
 
-    function reset() {
-        current_map++;
-        cannons = [];
-        current_cannon = 0;
-        shells = [];
-        id = 0;
-        collisionLayer = false;
-        towersGroup = false;
-        shellsGroup = false;
-        stateText = '';
-        state = {
-            active: true,
-            inaims: false,
-            aimlength: 0,
-            lastFireTime: 0
-        };
-        game = new Phaser.Game(config);
+    var player_towers = {1: {1: 11, 
+                             2: 12,
+                            },
+                         2: {1: 13,
+                             2: 14
+                            }
+
     }
 
+
+
+
+    // Если в урле передан параметр level, загружаем json с этим
+
+    var currentLevelConfig;
+    var currentlevel = getParameterByName('level');
+
+    if (currentlevel) {
+        // Фикс, на поиск которого я убил полдня 
+        $.ajaxSetup({beforeSend: function(xhr){
+            if (xhr.overrideMimeType)
+                {
+                    xhr.overrideMimeType("application/json");
+                }
+            }
+        });
+        console.log("config/" + currentlevel + ".json")
+        aaa = $.getJSON( "config/" + currentlevel + ".json", function( data ){ currentLevelConfig = data; 
+            // Вот тут место для запуска игры
+            if(currentLevelConfig.type == 'levelintro') {
+               game = new Phaser.Game(config_intro);
+            } else if (currentLevelConfig.type == 'level') {
+               game = new Phaser.Game(config);
+            }
+        }).fail(function() {
+            console.log( "error" );
+        });
+    } else {
+        // Если уровень не передан, запускаем главное меню
+        game = new Phaser.Game(config_main_menu);
+    }
+
+
+    // Функции, используемые фазером
+
     function preload() {
-        this.load.tilemapTiledJSON('map', 'assets/' + maps[current_map] + '.json');
+        this.load.tilemapTiledJSON('map', currentLevelConfig.map);
+        this.load.image('background', currentLevelConfig.background);
         this.load.image('bullet', 'assets/bullet.png');
         this.load.image('cannon', 'assets/cannon.png');
         this.load.image('tower1_selected', 'assets/tower_selected.png');
         this.load.image('tower2_selected', 'assets/tower2_selected.png');
-        this.load.image('background', 'assets/background.jpg');
+        this.load.image('menu_background', 'assets/main_menu.png');
+        this.load.image('main_menu_siloviki', 'assets/main_menu_siloviki.png');
+        this.load.image('main_menu_syslibs', 'assets/main_menu_syslibs.png');
+        this.load.image('main_menu_credits', 'assets/main_menu_credits.png');
         this.load.image('tower1', 'assets/tower.png');
         this.load.image('tower2', 'assets/tower2.png');
         this.load.image('kremlinstower2', 'assets/tiles2.png');
         this.load.image('shell', 'assets/shell.png');
         this.load.image('paper_shell', 'assets/paper_shell.png');
         this.load.image('caliber_shell', 'assets/caliber_shell.png');
+        this.load.image('gameover', 'assets/gameover.png');
+        this.load.image('win', 'assets/win.png');
         this.load.spritesheet('explosion', 'assets/explosion.png', { frameWidth: 64, frameHeight: 64, endFrame: 25});
+        if (currentLevelConfig.themeMusic) {
+            this.load.audio('theme', [
+                currentLevelConfig.themeMusic
+            ]);
+        }
     }
     function create() {
         towersGroup = this.add.group();
         shellsGroup = this.add.group();
+
+        //var music = this.sound.add('theme');
+        //music.play();
 
         this.add.tileSprite(595, 320, 1190, 640, 'background');
         map = this.add.tilemap('map');
@@ -98,8 +177,8 @@
         collisionLayer = map.createStaticLayer('kremlin', tiles);
 
 
-        var player1_towers = getTilesByIndex(collisionLayer, [11,12]);
-        var player2_towers = getTilesByIndex(collisionLayer, [13,14]);
+        var player1_towers = getTilesByIndex(collisionLayer, [player_towers[1][1],player_towers[1][2]]);
+        var player2_towers = getTilesByIndex(collisionLayer, [player_towers[2][1],player_towers[2][2]]);
 
         setCollision(collisionLayer);
 
@@ -145,82 +224,99 @@
     }
 
     function update () {
-        if (gameover) {
-            if (this.input.activePointer.isDown) {
-                reset();
-                return;
-            } else {
-                return;
+        if (gameover && !gameover_reacted) {
+            if (gameover == 1) {
+                var box = this.add.image(550, 200, 'win');
+                box.setInteractive();
+                box.on('pointerdown', nextLevel, this);
+                box.on('pointerover', function (pointer) {
+                    this.setTint(0xff0000);
+
+                });
+                box.on('pointerout', function (pointer) {
+                    this.clearTint();
+
+                });
+
+            } else if (gameover == 2) {
+                var box = this.add.image(550, 200, 'gameover');
+                box.setInteractive();
+                box.on('pointerdown', restartLevel, this);
+                box.on('pointerover', function (pointer) {
+                    this.setTint(0xff0000);
+
+                });
+                box.on('pointerout', function (pointer) {
+                    this.clearTint();
+
+                });
+            }
+            gameover_reacted = true;
+            return;
+        } else if (!gameover) {
+
+            var p1_alive = 0;
+            var p2_alive = 0;
+
+            for (var c in cannons) {
+                if (cannons[c].player == 1 && ( !cannons[c].destroyed)) {
+                    p1_alive ++;
+                } else if (cannons[c].player == 2 && ( !cannons[c].destroyed)) {
+                    p2_alive ++;
+                }
             }
 
-        }
-        var p1_alive = 0;
-        var p2_alive = 0;
-
-        for (var c in cannons) {
-            if (cannons[c].player == 1 && ( !cannons[c].destroyed)) {
-                p1_alive ++;
-            } else if (cannons[c].player == 2 && ( !cannons[c].destroyed)) {
-                p2_alive ++;
+            if (p1_alive == 0) {
+                gameover = 2;
             }
-        }
 
-        if (p1_alive == 0) {
-            console.info('p1 gameover');
-            stateText = 'Game Over.\nPlayer 1 wins.\nClick here to next level';
-            stateText.visible = true;
-            gameover = true;
-        }
-
-        if (p2_alive == 0) {
-            console.info('p2 gameover');
-            stateText = 'Game Over.\nPlayer 2 wins.\nClick here to next level';
-            stateText.visible = true;
-            gameover = true;
-        }
-        this.physics.overlap(towersGroup, shellsGroup, killTower, null, this);
-        this.physics.overlap(shellsGroup, shellsGroup, rocketRocket, null, this);
-        // Смещаем указатель на следующую башню, если текущая уничтожена
-        while (cannons[current_cannon].destroyed) {
-            current_cannon = (current_cannon + 1) % cannons.length;
-        }
-        if (cannons[current_cannon].type == 1) { 
-            cannons[current_cannon].tower.setTexture('tower1_selected');
-        } else if (cannons[current_cannon].type == 2) { 
-            cannons[current_cannon].tower.setTexture('tower2_selected');
-        }
-        // Проверяем чей текущий ход - человека или робота. Если робота, то стреляем сразу
-        if (cannons[current_cannon].player == 2) {
-            fire(this, state.aimlength);
-            state.active = false;
-            state.lastFireTime = Date.now();
-            state.inaims = false;
-        } else if (this.input.activePointer.isDown && state.active) {
-            // set the angle according to the mouse pointer
-            state.inaims = true;
-            mouseX = this.input.x;
-            mouseY = this.input.y;
-            cannonX = cannons[current_cannon].x;
-            cannonY = cannons[current_cannon].y;
-            var aimline = new Phaser.Geom.Line(cannonX, cannonY, mouseX, mouseY);
-            vector.clear()
-            vector.strokeLineShape(aimline);
-            realAngle = Math.atan2(mouseY - cannonY, mouseX - cannonX) * 180 / Math.PI;
-            unrealAngle = realAngle + 180;
-            if (check_angle(cannons[current_cannon].allowable_angle, unrealAngle)) {
-                cannons[current_cannon].sprite.angle = unrealAngle;
-                state.aimlength = Phaser.Geom.Line.Length(aimline).toFixed(0);
+            if (p2_alive == 0) {
+                gameover = 1;
             }
-        } else if (state.inaims == true) { 
-            fire(this, state.aimlength);
-            state.active = false;
-            state.lastFireTime = Date.now();
-            state.inaims = false;
-        }
+            this.physics.overlap(towersGroup, shellsGroup, killTower, null, this);
+            this.physics.overlap(shellsGroup, shellsGroup, rocketRocket, null, this);
+            // Смещаем указатель на следующую башню, если текущая уничтожена
+            while (cannons[current_cannon].destroyed) {
+                current_cannon = (current_cannon + 1) % cannons.length;
+            }
+            if (cannons[current_cannon].type == 1) { 
+                cannons[current_cannon].tower.setTexture('tower1_selected');
+            } else if (cannons[current_cannon].type == 2) { 
+                cannons[current_cannon].tower.setTexture('tower2_selected');
+            }
+            // Проверяем чей текущий ход - человека или робота. Если робота, то стреляем сразу
+            if (cannons[current_cannon].player == 2) {
+                fire(this, state.aimlength);
+                state.active = false;
+                state.lastFireTime = Date.now();
+                state.inaims = false;
+            } else if (this.input.activePointer.isDown && state.active) {
+                // set the angle according to the mouse pointer
+                state.inaims = true;
+                mouseX = this.input.x;
+                mouseY = this.input.y;
+                cannonX = cannons[current_cannon].x;
+                cannonY = cannons[current_cannon].y;
+                var aimline = new Phaser.Geom.Line(cannonX, cannonY, mouseX, mouseY);
+                vector.clear()
+                vector.strokeLineShape(aimline);
+                realAngle = Math.atan2(mouseY - cannonY, mouseX - cannonX) * 180 / Math.PI;
+                unrealAngle = realAngle + 180;
+                if (check_angle(cannons[current_cannon].allowable_angle, unrealAngle)) {
+                    cannons[current_cannon].sprite.angle = unrealAngle;
+                    state.aimlength = Phaser.Geom.Line.Length(aimline).toFixed(0);
+                }
+            } else if (state.inaims == true) { 
+                fire(this, state.aimlength);
+                state.active = false;
+                state.lastFireTime = Date.now();
+                state.inaims = false;
+            }
 
 
-        if (Date.now() - state.lastFireTime > 1000) {
-            state.active = true;
+            if (Date.now() - state.lastFireTime > 1000) {
+                state.active = true;
+            }
         }
     }
 
@@ -246,12 +342,12 @@
         };
 
         // Пока тупая проверка индекса
-        if (tower.index == 12 || tower.index == 14) {
+        if (tower.index == player_towers[1][1] || tower.index == player_towers[2][1]) {
             cannon.tower = obj.physics.add.image(tower.pixelX + 16, tower.pixelY - 76, 'tower1');    
             cannon.y = tower.pixelY - 65;
             cannon.type = 1;
         } 
-        else if (tower.index == 11 || tower.index == 13) {
+        else if (tower.index == player_towers[1][2] || tower.index == player_towers[2][2]) {
             cannon.tower = obj.physics.add.image(tower.pixelX + 16, tower.pixelY - 51, 'tower2');    
             cannon.y = tower.pixelY - 50;
             cannon.type = 2;
@@ -284,6 +380,9 @@
             cannons[current_cannon].tower.setTexture('tower2');            
         }
         aiParams = getAIFireVector(game, cannons[current_cannon]);
+        if (!aiParams) {
+            return;
+        }
 
         // запустить снаряд
         angle = cannons[current_cannon].sprite.angle;
@@ -359,6 +458,7 @@
                 }
             }
         }
+        if (foreignTower == null) { return; }
 
         console.info("Minimal distance is " + minimalDistance);
         // Теперь мы нашли башню и теоретически можем рассчитать параболу.
@@ -570,6 +670,131 @@
 
     function getRandomInt(min, max) {
       return Math.floor(Math.random() * (max - min)) + min;
+    }
+
+
+    function restartLevel() {
+      window.location.reload();
+    }
+
+    function nextLevel() {
+        if (currentLevelConfig.nextlevel) {
+            window.location.assign('?level=' + currentLevelConfig.nextlevel);
+        } else {
+            window.location.assign('');
+        }
+    }
+
+/////////// Main menu ///////////////////////////////////////////////////
+
+    function create_menu() {
+        var music = this.sound.add('theme');
+        music.play();
+        this.add.tileSprite(595, 320, 1190, 640, 'menu_background');
+
+
+        var siloviki = this.add.image(150, 550, 'main_menu_siloviki').setInteractive();
+        siloviki.on('pointerdown', function() {window.location.assign('?level=00000000')}, this);
+        siloviki.on('pointerover', function (pointer) { this.setTint(0xff0000); });
+        siloviki.on('pointerout', function (pointer) { this.clearTint(); });
+
+        var syslibs = this.add.image(600, 550, 'main_menu_syslibs').setInteractive();
+        syslibs.on('pointerdown', restartLevel, this);
+        syslibs.on('pointerover', function (pointer) { this.setTint(0xff0000); });
+        syslibs.on('pointerout', function (pointer) { this.clearTint(); });
+
+        var credits = this.add.image(1050, 550, 'main_menu_credits').setInteractive();
+        credits.on('pointerdown', restartLevel, this);
+        credits.on('pointerover', function (pointer) { this.setTint(0xff0000); });
+        credits.on('pointerout', function (pointer) { this.clearTint(); });
+
+    }
+
+    function update_menu() {
+
+    }
+
+
+    function preload_menu() {
+        this.load.image('menu_background', 'assets/main_menu.png');
+        this.load.image('main_menu_siloviki', 'assets/main_menu_siloviki.png');
+        this.load.image('main_menu_syslibs', 'assets/main_menu_syslibs.png');
+        this.load.image('main_menu_credits', 'assets/main_menu_credits.png');
+        this.load.audio('theme', [
+            'assets/rasputin.mp3'
+        ]);
+    }
+
+
+////    ////////// Level's intro ////////////////////////////////////////////////////////
+
+    function preload_intro() {
+
+        if (currentLevelConfig.image) {
+            this.load.image('image', currentLevelConfig.image);
+        }
+        this.load.image('go', 'assets/go.png');
+        if (currentLevelConfig.theme) {
+            this.load.audio('theme', [
+                currentLevelConfig.theme
+            ]);
+        }
+    }
+
+
+    function create_intro() {
+//        var music = this.sound.add('theme');
+
+//        music.play();
+//        this.add.tileSprite(595, 320, 1190, 640, 'menu_background');
+
+        //this.backgroundColor = "#4488AA";
+        if (currentLevelConfig.image) {
+            this.add.image(550, 150, 'image').setInteractive();            
+        }
+        var content = []
+        numb = 50;
+        allWords = currentLevelConfig.text.split(" ");
+        var i = 0;
+        for (word in allWords) {
+            if (!content[i]) {
+                content[i] = allWords[word];
+            } else if (content[i].length + allWords[word].length <= numb) {
+                content[i] += " " + allWords[word];
+            } else {
+                i++;
+                content[i] = allWords[word];
+            }
+        }
+        this.add.text(100, 400, content, { fontFamily: 'Arial', color: '#ffffff', fontSize: '30px', align: 'left' });
+        if (currentLevelConfig.nextlevel) {
+            var go = this.add.image(800, 600, 'go');
+            go.setInteractive();
+            go.on('pointerdown', function() { window.location.assign('?level='+currentLevelConfig.nextlevel)} , this);
+            go.on('pointerover', function (pointer) {
+                this.setTint(0xff0000);
+
+            });
+            go.on('pointerout', function (pointer) {
+                this.clearTint();
+
+            });
+
+        }
+    }
+
+    function update_intro() {
+
+    }
+
+    function getParameterByName(name) {
+        url = window.location.href;
+        name = name.replace(/[\[\]]/g, "\\$&");
+        var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+            results = regex.exec(url);
+        if (!results) return null;
+        if (!results[2]) return '';
+        return decodeURIComponent(results[2].replace(/\+/g, " "));
     }
 
 </script>
