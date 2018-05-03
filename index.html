@@ -651,7 +651,7 @@
         for ( y = 0; y < height; y++ ) {
             for ( x = 0; x < width; x++) {
                 tile = layer.layer.data[y][x];
-                if (tile.index > -1 && tile.index < 10) {
+                if ((tile.index > -1 && tile.index < 10) || (tile.index > 19)) {
                     tile.setCollision(true, true, true, true, false);
                 }
             }
