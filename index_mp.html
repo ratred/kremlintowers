@@ -369,7 +369,7 @@
 
 
     function fire(game, aa) {
-        aa = aa / 2;
+        aa = aa / 10;
         vector.clear()
         if (cannons[current_cannon].type == 1) {
             cannons[current_cannon].tower.setTexture('tower1');
@@ -385,7 +385,7 @@
         angle = cannons[current_cannon].sprite.angle;
 //        var shell = game.physics.add.image(cannons[current_cannon].x, cannons[current_cannon].y, player_shells[cannons[current_cannon].player]).setActive();
 
-        var shell = game.physics.add.image(cannons[current_cannon].x, cannons[current_cannon].y, player_shells[cannons[current_cannon].player]).setActive();
+        var shell = game.matter.add.image(cannons[current_cannon].x, cannons[current_cannon].y, player_shells[cannons[current_cannon].player]).setActive();
 
 
         shell.setDataEnabled();
