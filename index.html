@@ -51,7 +51,7 @@
                 },
                 matter: {
                     debug: true,
-                    gravity: { y: 0.5 }
+                    gravity: { y: 10 }
                 }
             },
             preload: preload,
@@ -68,7 +68,8 @@
         active: true,
         inaims: false,
         aimlength: 0,
-        lastFireTime: 0
+        lastFireTime: 0,
+        aiState: {}
     };
 
     current_level = false;
@@ -460,6 +461,19 @@
             }
         }
         if (foreignTower == null) { return; }
+        if (state.aiState[myCannon] == undefined) {
+            state.aiState[myCannon] = {
+                aim : null,
+                iteration: 1
+            }
+        }
+        previousAim = state.aiState[myCannon].aim;
+        state.aiState[myCannon].aim = foreignTower;
+        if (foreignTower != previousAim) {
+            state.aiState[myCannon].iteration = 1;
+        } else {
+            state.aiState[myCannon].iteration++;
+        }
 
         console.info("Minimal distance is " + minimalDistance);
         // Теперь мы нашли башню и теоретически можем рассчитать параболу.
@@ -477,8 +491,8 @@
         // <=> b > (h_o - h * d_o^2 / d^2) / (-d * d_o^2 / d^2 + d_o)
         // Выбираем минимальное b, удовлетворяющее всем этим условиям. Дальше вычисляется энергия выстрела, это
         // - b^2 / 4a
-        distance = foreignTower.x - myCannon.x;
-        height = myCannon.y - foreignTower.y;
+        distance = foreignTower.x + (foreignTower.width / 2) - myCannon.x;
+        height = -(myCannon.y - foreignTower.y + (foreignTower.height / 2));
         console.info("d = " + distance + ", h = " + height);
         sign = Math.sign(distance);
         bmin = 0.5;
@@ -494,48 +508,46 @@
         console.info("cannon@" + myCannon.x + ", " + myCannon.y);
         for (let obstacle of obstacles) {
             isCollidable = obstacle.index > 0;
-            if (isCollidable && obstacle != foreignTower && obstacle != myCannon.tower) {
-                distance_obstacle = obstacle.pixelX - myCannon.x;
+            distance_obstacle = obstacle.pixelX - myCannon.x;
+            if (isCollidable && obstacle != foreignTower && obstacle != myCannon.tower && distance_obstacle != 0) {
                 //console.log("obstacle@" + obstacle.pixelX + ", " + obstacle.pixelY);
                 height_obstacle = myCannon.y - obstacle.pixelY + 96; // invert y in order to think less
                 distance_fraction = distance_obstacle / distance; // must be positive and less than one
                 distance_fraction_squared = Math.pow(distance_fraction, 2);
                 blimit = (height_obstacle - height * distance_fraction_squared) / (distance_obstacle * (1 - distance_fraction));
-                bmin = Math.max(bmin, Math.abs(blimit));
+                if (!isFinite(blimit)) {
+                    console.info("df: " + distance_fraction);
+                    console.info("blimit: " + Math.abs(blimit) + ", bmin: " + bmin);
+                } else {
+                    bmin = Math.max(bmin, Math.abs(blimit));
+                }
             }
         }
         a = (height - bmin * distance) / Math.pow(distance, 2);
         // Здесь мы рассчитали параметры параболы. Осталось их перевести в скорость.
         // Воспользуемся матаном. Мы знаем, что
-        // d^2 y / d t = -g
-        // d^2 y / d x = 2a
-        // d^2 y / d x * (d x / d t) = d^2 y / d t
-        // 2 * a * v_x = -g <=> v_x = -g / (2 * a)
-        // Только альтернативно ориентированный фазер в это не верит.
+        // d^2 y / d t^2 = -g
+        // d^2 y / d x^2 = 2a
+        // d^2 y / d x^2 * (d x / d t)^2 = d^2 y / d t^2
+        // 2 * a * v_x^2 = -g <=> v_x = \sqrt{-g / (2 * a)}
         g = config.scene.physics.arcade.gravity.y;
-        velocityX = (-g / (2 * a)) / 50; // Поделим ускорение на фреймрейт
+        vx_squared = Math.abs(-g / (2 * a));
+
+        velocityX = Math.sign(distance) * Math.sqrt(vx_squared); // Поделим ускорение на фреймрейт
         velocityY = bmin * velocityX;
         angle = Math.atan(bmin);
         hcomputed = a * distance * distance + bmin * distance;
         console.info("parable params are: a=" + a + ", b=" + bmin);
         console.info("height: " + hcomputed + ", actual: " + height);
         console.info("shell velocity is " + velocityX + ", " + velocityY);
-        // Кинем монетку, вносить ли возмущение
-
-        coin = getRandomInt(0,3);
-        console.info('Coin: ' + coin);
-
-        // Внесём возмущение в угол
-
-        if (coin == 1 || coin == 3) {
-            angle += getRandomInt(0,3);
-        } else if (coin == 2 || coin == 3) {
-
-            // Внесём возмущение в ускорения
-
-            velocityX += (getRandomInt(0,300) - 150);
-            velocityY += (getRandomInt(0,300) - 150);
-        }
+        // Вооот, теперь оно работает. Но так как играть так нельзя (получается симулятор ПРО), немного ослабим ИИ.
+        // Допустим, что угол правильный, но скорость будем подбирать методом тыка.
+        error_order = 1 / state.aiState[myCannon].iteration;
+        relative_error_x = Math.random() * (error_order) - (error_order / 2);
+        relative_error_y = Math.random() * (error_order) - (error_order / 2);
+        velocityX += velocityX * relative_error_x;
+        velocityY += velocityY * relative_error_y;
+        angle = Math.atan2(velocityY, velocityX);
         console.info("Угол с возмущением: " + angle);
         console.info("Ускорение с возмущением: " + velocityX + ", " + velocityY);
 
