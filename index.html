@@ -461,6 +461,19 @@
             }
         }
         if (foreignTower == null) { return; }
+        if (state.aiState[myCannon] == undefined) {
+            state.aiState[myCannon] = {
+                aim : null,
+                iteration: 1
+            }
+        }
+        previousAim = state.aiState[myCannon].aim;
+        state.aiState[myCannon].aim = foreignTower;
+        if (foreignTower != previousAim) {
+            state.aiState[myCannon].iteration = 1;
+        } else {
+            state.aiState[myCannon].iteration++;
+        }
 
         console.info("Minimal distance is " + minimalDistance);
         // Теперь мы нашли башню и теоретически можем рассчитать параболу.
@@ -528,26 +541,13 @@
         console.info("height: " + hcomputed + ", actual: " + height);
         console.info("shell velocity is " + velocityX + ", " + velocityY);
         // Вооот, теперь оно работает. Но так как играть так нельзя (получается симулятор ПРО), немного ослабим ИИ.
-        // Кинем монетку, вносить ли возмущение
-
-        coin = getRandomInt(0,3);
-        console.info('Coin: ' + coin);
-
-        // Внесём возмущение в угол
-
-        if (coin == 1 || coin == 3) {
-            angle += getRandomInt(0,3);
-        } else if (coin == 2 || coin == 3) {
-
-            // Внесём возмущение в ускорения
-            relative_error_x = getRandomInt(0, 30);
-            relative_error_y = getRandomInt(0, 30);
-            relative_error_x = 1.0 + (relative_error_x - 30) / 100.0;
-            relative_error_y = 1.0 + (relative_error_y - 30) / 100.0;
-
-            velocityX *= relative_error_x;
-            velocityY *= relative_error_y;
-        }
+        // Допустим, что угол правильный, но скорость будем подбирать методом тыка.
+        error_order = 1 / state.aiState[myCannon].iteration;
+        relative_error_x = Math.random() * (error_order) - (error_order / 2);
+        relative_error_y = Math.random() * (error_order) - (error_order / 2);
+        velocityX += velocityX * relative_error_x;
+        velocityY += velocityY * relative_error_y;
+        angle = Math.atan2(velocityY, velocityX);
         console.info("Угол с возмущением: " + angle);
         console.info("Ускорение с возмущением: " + velocityX + ", " + velocityY);
 
