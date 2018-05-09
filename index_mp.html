@@ -180,11 +180,20 @@
         var tiles = map.addTilesetImage('kremlinstower2');
         collisionLayer = map.createStaticLayer('kremlin', tiles);
 
-
         var player1_towers = getTilesByIndex(collisionLayer, [player_towers[1][1],player_towers[1][2]]);
         var player2_towers = getTilesByIndex(collisionLayer, [player_towers[2][1],player_towers[2][2]]);
 
-        setCollision(collisionLayer);
+        collisionLayer.setCollisionByProperty({ collides: true });
+        this.matter.world.convertTilemapLayer(collisionLayer);
+        collisionLayer.forEachTile(function (tile) {
+            console.log(tile);
+            this.physics.matter.TileBody('test', tile);
+            console.log(tile.physics);
+            //console.log(tile.physics.add.matterBody.body);
+        });
+
+
+        //setCollision(collisionLayer);
 
         // Создание всех башен
         // Башни заводим поочерёдно для каждого из игроков. Допускаем возможность, что у какого-то из них на каком-то этапе будет больше башен.
@@ -216,7 +225,27 @@
 
         stateText = this.add.text(100, 200, ' ', { fontFamily: 'Arial', fontSize: 64, color: '#00ff00' });
         //stateText.anchor.setTo(0.5, 0.5);
-        stateText.visible = false;    
+        stateText.visible = false;   
+
+
+
+    this.matter.world.on('collisionstart', function (event) {
+        for (var i = 0; i < event.pairs.length; i++)
+        {
+            var bodyA = event.pairs[i].bodyA;
+            var bodyB = event.pairs[i].bodyB;
+            console.log(bodyA+bodyB,red);         
+        }
+        }, this);
+
+    this.matter.world.on('collisionactive', function (event) {
+        for (var i = 0; i < event.pairs.length; i++)
+        {
+            var bodyA = event.pairs[i].bodyA;
+            var bodyB = event.pairs[i].bodyB;
+            console.log(bodyA+bodyB,red);         
+        }
+        }, this);
     }
 
     function update () {
