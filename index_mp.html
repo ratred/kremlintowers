@@ -50,7 +50,7 @@
                     maxVelocity: 500
                 },
                 matter: {
-                    debug: true,
+//                    debug: true,
                     gravity: { y: 0.5 }
                 }
             },
@@ -68,7 +68,8 @@
         active: true,
         inaims: false,
         aimlength: 0,
-        lastFireTime: 0
+        lastFireTime: 0,
+        aiState: {}
     };
 
     current_level = false;
@@ -180,20 +181,11 @@
         var tiles = map.addTilesetImage('kremlinstower2');
         collisionLayer = map.createStaticLayer('kremlin', tiles);
 
+
         var player1_towers = getTilesByIndex(collisionLayer, [player_towers[1][1],player_towers[1][2]]);
         var player2_towers = getTilesByIndex(collisionLayer, [player_towers[2][1],player_towers[2][2]]);
 
-        collisionLayer.setCollisionByProperty({ collides: true });
-        this.matter.world.convertTilemapLayer(collisionLayer);
-        collisionLayer.forEachTile(function (tile) {
-            console.log(tile);
-            this.physics.matter.TileBody('test', tile);
-            console.log(tile.physics);
-            //console.log(tile.physics.add.matterBody.body);
-        });
-
-
-        //setCollision(collisionLayer);
+        setCollision(collisionLayer);
 
         // Создание всех башен
         // Башни заводим поочерёдно для каждого из игроков. Допускаем возможность, что у какого-то из них на каком-то этапе будет больше башен.
@@ -225,27 +217,7 @@
 
         stateText = this.add.text(100, 200, ' ', { fontFamily: 'Arial', fontSize: 64, color: '#00ff00' });
         //stateText.anchor.setTo(0.5, 0.5);
-        stateText.visible = false;   
-
-
-
-    this.matter.world.on('collisionstart', function (event) {
-        for (var i = 0; i < event.pairs.length; i++)
-        {
-            var bodyA = event.pairs[i].bodyA;
-            var bodyB = event.pairs[i].bodyB;
-            console.log(bodyA+bodyB,red);         
-        }
-        }, this);
-
-    this.matter.world.on('collisionactive', function (event) {
-        for (var i = 0; i < event.pairs.length; i++)
-        {
-            var bodyA = event.pairs[i].bodyA;
-            var bodyB = event.pairs[i].bodyB;
-            console.log(bodyA+bodyB,red);         
-        }
-        }, this);
+        stateText.visible = false;    
     }
 
     function update () {
@@ -368,17 +340,17 @@
 
         // Пока тупая проверка индекса
         if (tower.index == player_towers[1][1] || tower.index == player_towers[2][1]) {
-            cannon.tower = obj.physics.add.image(tower.pixelX + 16, tower.pixelY - 76, 'tower1');    
+            cannon.tower = obj.matter.add.image(tower.pixelX + 16, tower.pixelY - 76, 'tower1', null, {isStatic: true});    
             cannon.y = tower.pixelY - 65;
             cannon.type = 1;
         } 
         else if (tower.index == player_towers[1][2] || tower.index == player_towers[2][2]) {
-            cannon.tower = obj.physics.add.image(tower.pixelX + 16, tower.pixelY - 51, 'tower2');    
+            cannon.tower = obj.matter.add.image(tower.pixelX + 16, tower.pixelY - 51, 'tower2',null, {isStatic: true});
             cannon.y = tower.pixelY - 50;
             cannon.type = 2;
         } 
 
-        cannon.tower.body.allowGravity = false;
+        //cannon.tower.setGravityY(0);
         hideTile(tower);
         var angle;
         if (cannon.player == 1) {
@@ -398,7 +370,7 @@
 
 
     function fire(game, aa) {
-        aa = aa / 10;
+        aa = aa / 2;
         vector.clear()
         if (cannons[current_cannon].type == 1) {
             cannons[current_cannon].tower.setTexture('tower1');
@@ -489,6 +461,19 @@
             }
         }
         if (foreignTower == null) { return; }
+        if (state.aiState[myCannon] == undefined) {
+            state.aiState[myCannon] = {
+                aim : null,
+                iteration: 1
+            }
+        }
+        previousAim = state.aiState[myCannon].aim;
+        state.aiState[myCannon].aim = foreignTower;
+        if (foreignTower != previousAim) {
+            state.aiState[myCannon].iteration = 1;
+        } else {
+            state.aiState[myCannon].iteration++;
+        }
 
         console.info("Minimal distance is " + minimalDistance);
         // Теперь мы нашли башню и теоретически можем рассчитать параболу.
@@ -506,8 +491,8 @@
         // <=> b > (h_o - h * d_o^2 / d^2) / (-d * d_o^2 / d^2 + d_o)
         // Выбираем минимальное b, удовлетворяющее всем этим условиям. Дальше вычисляется энергия выстрела, это
         // - b^2 / 4a
-        distance = foreignTower.x - myCannon.x;
-        height = myCannon.y - foreignTower.y;
+        distance = foreignTower.x + (foreignTower.width / 2) - myCannon.x;
+        height = -(myCannon.y - foreignTower.y + (foreignTower.height / 2));
         console.info("d = " + distance + ", h = " + height);
         sign = Math.sign(distance);
         bmin = 0.5;
@@ -523,48 +508,46 @@
         console.info("cannon@" + myCannon.x + ", " + myCannon.y);
         for (let obstacle of obstacles) {
             isCollidable = obstacle.index > 0;
-            if (isCollidable && obstacle != foreignTower && obstacle != myCannon.tower) {
-                distance_obstacle = obstacle.pixelX - myCannon.x;
+            distance_obstacle = obstacle.pixelX - myCannon.x;
+            if (isCollidable && obstacle != foreignTower && obstacle != myCannon.tower && distance_obstacle != 0) {
                 //console.log("obstacle@" + obstacle.pixelX + ", " + obstacle.pixelY);
                 height_obstacle = myCannon.y - obstacle.pixelY + 96; // invert y in order to think less
                 distance_fraction = distance_obstacle / distance; // must be positive and less than one
                 distance_fraction_squared = Math.pow(distance_fraction, 2);
                 blimit = (height_obstacle - height * distance_fraction_squared) / (distance_obstacle * (1 - distance_fraction));
-                bmin = Math.max(bmin, Math.abs(blimit));
+                if (!isFinite(blimit)) {
+                    console.info("df: " + distance_fraction);
+                    console.info("blimit: " + Math.abs(blimit) + ", bmin: " + bmin);
+                } else {
+                    bmin = Math.max(bmin, Math.abs(blimit));
+                }
             }
         }
         a = (height - bmin * distance) / Math.pow(distance, 2);
         // Здесь мы рассчитали параметры параболы. Осталось их перевести в скорость.
         // Воспользуемся матаном. Мы знаем, что
-        // d^2 y / d t = -g
-        // d^2 y / d x = 2a
-        // d^2 y / d x * (d x / d t) = d^2 y / d t
-        // 2 * a * v_x = -g <=> v_x = -g / (2 * a)
-        // Только альтернативно ориентированный фазер в это не верит.
+        // d^2 y / d t^2 = -g
+        // d^2 y / d x^2 = 2a
+        // d^2 y / d x^2 * (d x / d t)^2 = d^2 y / d t^2
+        // 2 * a * v_x^2 = -g <=> v_x = \sqrt{-g / (2 * a)}
         g = config.scene.physics.arcade.gravity.y;
-        velocityX = (-g / (2 * a)) / 50; // Поделим ускорение на фреймрейт
+        vx_squared = Math.abs(-g / (2 * a));
+
+        velocityX = Math.sign(distance) * Math.sqrt(vx_squared); // Поделим ускорение на фреймрейт
         velocityY = bmin * velocityX;
         angle = Math.atan(bmin);
         hcomputed = a * distance * distance + bmin * distance;
         console.info("parable params are: a=" + a + ", b=" + bmin);
         console.info("height: " + hcomputed + ", actual: " + height);
         console.info("shell velocity is " + velocityX + ", " + velocityY);
-        // Кинем монетку, вносить ли возмущение
-
-        coin = getRandomInt(0,3);
-        console.info('Coin: ' + coin);
-
-        // Внесём возмущение в угол
-
-        if (coin == 1 || coin == 3) {
-            angle += getRandomInt(0,3);
-        } else if (coin == 2 || coin == 3) {
-
-            // Внесём возмущение в ускорения
-
-            velocityX += (getRandomInt(0,300) - 150);
-            velocityY += (getRandomInt(0,300) - 150);
-        }
+        // Вооот, теперь оно работает. Но так как играть так нельзя (получается симулятор ПРО), немного ослабим ИИ.
+        // Допустим, что угол правильный, но скорость будем подбирать методом тыка.
+        error_order = 1 / state.aiState[myCannon].iteration;
+        relative_error_x = Math.random() * (error_order) - (error_order / 2);
+        relative_error_y = Math.random() * (error_order) - (error_order / 2);
+        velocityX += velocityX * relative_error_x;
+        velocityY += velocityY * relative_error_y;
+        angle = Math.atan2(velocityY, velocityX);
         console.info("Угол с возмущением: " + angle);
         console.info("Ускорение с возмущением: " + velocityX + ", " + velocityY);
 
@@ -620,9 +603,7 @@
         }
 
         // Взрыв
-        explosion.x = obj.x;
-        explosion.y = obj.y;
-        explosion.anims.play('explode');
+        explosion(obj.x, obj.y);
 
         // Отмечаем башню в массиве, как удалённую
 
@@ -635,7 +616,7 @@
     // Попадание ракеты в ракету
 
     function rocketRocket(shell, obj) {
-        explosion(x,y);
+        explosion(obj.x,obj.y);
         shell.destroy();
         obj.destroy();
     }
@@ -682,7 +663,7 @@
         for ( y = 0; y < height; y++ ) {
             for ( x = 0; x < width; x++) {
                 tile = layer.layer.data[y][x];
-                if (tile.index > -1 && tile.index < 10) {
+                if ((tile.index > -1 && tile.index < 10) || (tile.index > 19)) {
                     tile.setCollision(true, true, true, true, false);
                 }
             }
@@ -825,7 +806,7 @@
         var explosion = game.scene.scenes[0].add.sprite(x, y, 'explosion');
         game.anims.create({
             key: 'explode',
-            frames: game.anims.generateFrameNumbers('explosion', { start: 0, end: 23, first: 23 }),
+            frames: game.anims.generateFrameNumbers('explosion', { start: 1, end: 23, first: 23 }),
             frameRate: 20
         });
         explosion.anims.play('explode');
