@@ -39,19 +39,14 @@
         height: 640,
         scene: {
             physics: {
-                //default: 'matter',
+                default: 'matter',
                 arcade: {
                     gravity: {y: 10},
-    //                debug: true,
-                },
-                impact: {
-                    gravity: 100,
-                    debug: true,
-                    maxVelocity: 500
+//                    debug: true,
                 },
                 matter: {
-//                    debug: true,
                     gravity: { y: 0.5 }
+//                    debug: true,
                 }
             },
             preload: preload,
@@ -123,7 +118,6 @@
                 }
             }
         });
-        console.log("config/" + currentlevel + ".json")
         aaa = $.getJSON( "config/" + currentlevel + ".json", function( data ){ currentLevelConfig = data; 
             // Вот тут место для запуска игры
             if(currentLevelConfig.type == 'levelintro') {
@@ -171,26 +165,33 @@
     function create() {
         towersGroup = this.add.group();
         shellsGroup = this.add.group();
-        this.physics.add.image(150, 150, 'caliber_shell').setActive();
+        //this.physics.add.image(150, 150, 'caliber_shell').setActive();
 
         //var music = this.sound.add('theme');
         //music.play();
 
+
+        // Фоновая картинка
         this.add.tileSprite(595, 320, 1190, 640, 'background');
-        map = this.add.tilemap('map');
+
+        // Загрузка карты уровня
+        map = this.make.tilemap({key: 'map'});
         var tiles = map.addTilesetImage('kremlinstower2');
-        collisionLayer = map.createStaticLayer('kremlin', tiles);
+        collisionLayer = map.createDynamicLayer('kremlin', tiles);
+
+
+        collisionLayer.setCollisionBetween(0,1000);
+        this.matter.world.convertTilemapLayer(collisionLayer);
+
+        console.log(collisionLayer);
 
 
         var player1_towers = getTilesByIndex(collisionLayer, [player_towers[1][1],player_towers[1][2]]);
         var player2_towers = getTilesByIndex(collisionLayer, [player_towers[2][1],player_towers[2][2]]);
 
-        setCollision(collisionLayer);
-
         // Создание всех башен
         // Башни заводим поочерёдно для каждого из игроков. Допускаем возможность, что у какого-то из них на каком-то этапе будет больше башен.
         for (towerNum = 0; towerNum < Math.max(player1_towers.length, player2_towers.length); towerNum++) {
-            console.info(towerNum);
             if (towerNum < player1_towers.length) {
                 cannons.push(createTower(this, player1_towers[towerNum], 1));
                 cannons[cannons.length-1].tower.setData('towerNum', cannons.length-1);
@@ -209,15 +210,21 @@
             cannons[current_cannon].tower.setTexture('tower2_selected');
         }
 
+        // Создаём на все тайлы материальные объекты
+
 
         // Создаём графический лучик от пушки к курсору
         vector = this.add.graphics({ lineStyle: { width: 4, color: 0xaa00aa } });
 
-        // Рисуем невидимый текст в центре экрана
+        // Создаём объект текста, в котором будут угол и ускорение
+        stateText = this.add.text(10, 10, '', { fontFamily: 'Arial', fontSize: 12, color: '#000000' });
 
-        stateText = this.add.text(100, 200, ' ', { fontFamily: 'Arial', fontSize: 64, color: '#00ff00' });
-        //stateText.anchor.setTo(0.5, 0.5);
-        stateText.visible = false;    
+
+        // Вешаем обработчик на коллизию
+        //this.matter.world.on('collisionstart', function (event) {
+        //    killTower(event.pairs[0].bodyB.gameObject, event.pairs[0].bodyA.gameObject);
+
+        //});
     }
 
     function update () {
@@ -303,6 +310,8 @@
                     cannons[current_cannon].sprite.angle = unrealAngle;
                     state.aimlength = Phaser.Geom.Line.Length(aimline).toFixed(0);
                 }
+                textAngle = (realAngle - 180).toFixed(0);
+                stateText.setText('Угол: ' + textAngle + ' ускорение: ' + state.aimlength);
             } else if (state.inaims == true) { 
                 fire(this, state.aimlength);
                 state.active = false;
@@ -338,7 +347,8 @@
 
         };
 
-        // Пока тупая проверка индекса
+        // Подменяем специальный тайл на башню. Пока выбираем башню на которую заменить конкретный тайл 
+        // тупой проверкой индекса.
         if (tower.index == player_towers[1][1] || tower.index == player_towers[2][1]) {
             cannon.tower = obj.matter.add.image(tower.pixelX + 16, tower.pixelY - 76, 'tower1', null, {isStatic: true});    
             cannon.y = tower.pixelY - 65;
@@ -350,8 +360,11 @@
             cannon.type = 2;
         } 
 
-        //cannon.tower.setGravityY(0);
+
+//        // Скрываем тайл, на который заменили башню.
         hideTile(tower);
+
+        // Добавляем пушку, предварительно выбрав для неё текущий и допустимые углы.
         var angle;
         if (cannon.player == 1) {
             cannon.x = tower.pixelX + 30;
@@ -364,13 +377,16 @@
         }
         cannon.sprite = obj.add.sprite(cannon.x, cannon.y, 'cannon');
         cannon.sprite.angle = angle;
+
+        // Засовываем башню в группу towersGroup
+
         towersGroup.add(cannon.tower);
         return cannon;
     }
 
 
     function fire(game, aa) {
-        aa = aa / 2;
+        aa = aa / 10;
         vector.clear()
         if (cannons[current_cannon].type == 1) {
             cannons[current_cannon].tower.setTexture('tower1');
@@ -597,6 +613,7 @@
 
     function killTower(shell, obj) {
 
+
         // Снаряд не коллайдится с собственной башней. Ну чтобы не.
         if (shell.getData('parentTower') == obj.getData('towerNum')) {
             return;
@@ -650,6 +667,24 @@
         }
         return results;
     }
+
+    // Получение всех тайлов в слое
+
+    function getAllTiles(layer) {
+        var results = [];
+        var height = layer.layer.height;
+        var width = layer.layer.width;
+        for ( y = 0; y < height; y++ ) {
+            for ( x = 0; x < width; x++) {
+                tile = layer.layer.data[y][x];
+                if (tile.index > -1) {
+                    results.push(tile);
+                }
+            }
+        }
+        return results;
+    }
+
 
 
 
