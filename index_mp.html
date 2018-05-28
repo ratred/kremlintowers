@@ -226,18 +226,27 @@ console.log(towersGroup.getChildren());
 
             // Если это башня
             if (towersGroup.contains(bodyA)) {
-
-                console.log('is tower!!!')
                 killTower(bodyB, bodyA);
             }
 
             // Если это коллизия двух ракет 
 
+            else if (shellsGroup.contains(bodyA) && shellsGroup.contains(bodyB)) {
+                rocketRocket(bodyB, bodyA);
+            }
+
+
             // Если это коллизия ракеты и дирижабля
 
             // Если это коллизия двух миньонов
 
+            // Если это коллизия ракеты и миньона
+
             // Все остальные случаи
+
+            else {
+                rocketRocket(bodyA, bodyB);
+            }
         //    killTower(event.pairs[0].bodyB.gameObject, event.pairs[0].bodyA.gameObject);
 
         });
@@ -585,8 +594,8 @@ console.log(towersGroup.getChildren());
 
         return {
             angle: sign * angle * 180 / Math.PI,
-            x: velocityX,
-            y: -velocityY * sign
+            x: velocityX/10,
+            y: (-velocityY * sign)/10
         };
     }
 
