@@ -183,9 +183,6 @@
         collisionLayer.setCollisionBetween(0,1000);
         this.matter.world.convertTilemapLayer(collisionLayer);
 
-        console.log(collisionLayer);
-
-
         var player1_towers = getTilesByIndex(collisionLayer, [player_towers[1][1],player_towers[1][2]]);
         var player2_towers = getTilesByIndex(collisionLayer, [player_towers[2][1],player_towers[2][2]]);
 
@@ -221,10 +218,29 @@
 
 
         // Вешаем обработчик на коллизию
-        //this.matter.world.on('collisionstart', function (event) {
+        this.matter.world.on('collisionstart', function (event) {
+            bodyA = event.pairs[0].bodyA.gameObject;
+            bodyB = event.pairs[0].bodyB.gameObject;
+
+console.log(towersGroup.getChildren());
+
+            // Если это башня
+            if (towersGroup.contains(bodyA)) {
+
+                console.log('is tower!!!')
+                killTower(bodyB, bodyA);
+            }
+
+            // Если это коллизия двух ракет 
+
+            // Если это коллизия ракеты и дирижабля
+
+            // Если это коллизия двух миньонов
+
+            // Все остальные случаи
         //    killTower(event.pairs[0].bodyB.gameObject, event.pairs[0].bodyA.gameObject);
 
-        //});
+        });
     }
 
     function update () {
