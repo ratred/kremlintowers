@@ -47,7 +47,7 @@
                 matter: {
                     gravity: { y: 0.5 }
 //                    debug: true,
-                }
+                },
             },
             preload: preload,
             create: create,
@@ -84,6 +84,7 @@
     var map;
     var stateText;
     var box;
+    var drag = 0.01;
 
     // Какой игрок какими снарядами играет
 
@@ -409,6 +410,17 @@ console.log(towersGroup.getChildren());
         return cannon;
     }
 
+    function solve_quadratic_equation(a, b, c) {
+        discriminant = b * b - 4 * a * c;
+        if (discriminant < 0) {
+            console.error("No solutions!");
+        }
+        console.info("D = " + (discriminant));
+        x_1 = (-b + Math.sqrt(discriminant)) / (2 * a);
+        x_2 = (-b - Math.sqrt(discriminant)) / (2 * a);
+        console.info("x_{12} = " + x_1 + ", " + x_2);
+        return [x_1, x_2];
+    }
 
     function fire(game, aa) {
         aa = aa / 10;
@@ -436,6 +448,9 @@ console.log(towersGroup.getChildren());
 //        shell.body.center.setTo(0.5, 0.5);
         shell.setAngle(angle);
         //shell.setAngularDrag(1.0);
+        //shell.setDrag(1.0, 1.0);
+        shell.setFrictionAir(drag);
+        shell.setMass(1.0);
         game.physics.add.collider(shell, collisionLayer, rocket_explode, null, this);
         game.physics.add.collider(shell, towersGroup, killTower, null, this);
 
@@ -519,6 +534,8 @@ console.log(towersGroup.getChildren());
         console.info("Minimal distance is " + minimalDistance);
         // Теперь мы нашли башню и теоретически можем рассчитать параболу.
         // Что-то я разучится считать банальные вещи.
+        // Окей, я задолбался.
+        // Давай по-новой.
         // Суть такова: Мы считаем параболу типа ax^2 + bx + c со следующими условиями:
         // c = 0 (т. к. в нуле снаряд никуда не летит)
         // a * d^2 + b * d = h <=> a = (h - b * d) / d^2 (т.к. на расстоянии d снаряд находится на высоте h) (*)
@@ -533,10 +550,9 @@ console.log(towersGroup.getChildren());
         // Выбираем минимальное b, удовлетворяющее всем этим условиям. Дальше вычисляется энергия выстрела, это
         // - b^2 / 4a
         distance = foreignTower.x + (foreignTower.width / 2) - myCannon.x;
-        height = -(myCannon.y - foreignTower.y + (foreignTower.height / 2));
+        height = -(myCannon.y - foreignTower.y);// + (foreignTower.height / 2));
         console.info("d = " + distance + ", h = " + height);
         sign = Math.sign(distance);
-        bmin = 0.5;
         rect = new Phaser.Geom.Rectangle(myCannon.x / tileToPixelsX, 0, distance, map.height);
         rectLeftLimit = Math.min(myCannon.x, foreignTower.x) + tileToPixelsX;
         rectRightLimit = Math.max(myCannon.x, foreignTower.x) - tileToPixelsX;
@@ -547,41 +563,47 @@ console.log(towersGroup.getChildren());
         obstacles = map.getTilesWithinWorldXY(rectLeftLimit, rectUpperLimit, rectWidth, rectHeight);
         hasObstacles = false;
         console.info("cannon@" + myCannon.x + ", " + myCannon.y);
+        maxHeightDifference = 0;
         for (let obstacle of obstacles) {
             isCollidable = obstacle.index > 0;
             distance_obstacle = obstacle.pixelX - myCannon.x;
             if (isCollidable && obstacle != foreignTower && obstacle != myCannon.tower && distance_obstacle != 0) {
                 //console.log("obstacle@" + obstacle.pixelX + ", " + obstacle.pixelY);
-                height_obstacle = myCannon.y - obstacle.pixelY + 96; // invert y in order to think less
-                distance_fraction = distance_obstacle / distance; // must be positive and less than one
-                distance_fraction_squared = Math.pow(distance_fraction, 2);
-                blimit = (height_obstacle - height * distance_fraction_squared) / (distance_obstacle * (1 - distance_fraction));
-                if (!isFinite(blimit)) {
-                    console.info("df: " + distance_fraction);
-                    console.info("blimit: " + Math.abs(blimit) + ", bmin: " + bmin);
-                } else {
-                    bmin = Math.max(bmin, Math.abs(blimit));
-                }
+                height_obstacle = myCannon.y - obstacle.pixelY + 16; // invert y in order to think less
+                dh = height_obstacle - height / distance * distance_obstacle;
+                maxHeightDifference = Math.max(dh, maxHeightDifference);
+                console.info("dh: " + dh + ", dhmax: " + maxHeightDifference);
             }
         }
-        a = (height - bmin * distance) / Math.pow(distance, 2);
-        // Здесь мы рассчитали параметры параболы. Осталось их перевести в скорость.
-        // Воспользуемся матаном. Мы знаем, что
-        // d^2 y / d t^2 = -g
-        // d^2 y / d x^2 = 2a
-        // d^2 y / d x^2 * (d x / d t)^2 = d^2 y / d t^2
-        // 2 * a * v_x^2 = -g <=> v_x = \sqrt{-g / (2 * a)}
-        g = config.scene.physics.arcade.gravity.y;
-        vx_squared = Math.abs(-g / (2 * a));
+        g = config.scene.physics.matter.gravity.y;
+        // Для начала озаботимся терминальной скоростью.
+        // g = \rho v_terminal <=> v_terminal = g / \rho
+        v_terminal = g / drag;
+        console.info("Terminal velocity is " + v_terminal);
+        // Едем дальше. Так как мне лень решать дифур самому, то предоставим это удовольствие уже заморочившимся этим вопросам гражданам.
+        // https://www.hindawi.com/journals/ijcgt/2014/463489/
+        // v_0 = k(r - p_0 - v_terminal t_r) + (r - p_0) / t_r
+        // v_0 = k((distance, height) - v_terminal t_r) + (distance, height) / t_r
+        // k = \rho / 2
+        // v_x = k * distance + distance / t
+        // v_y = k * (height - v_terminal t) + height / t
+        // v_y / v_x = b <=>
+        // t = solve_quadratic_equation(-k * v_terminal, k(h - bd), (h - bd))
+        kappa = drag / 2;
+        console.info("kappa = " + kappa);
+        t = maxHeightDifference / v_terminal + 2 * Math.sqrt(maxHeightDifference / (kappa * v_terminal));
+        //t += 30;
+        console.info("Снаряд упадёт в цель через " + t + " секунд");
+        velocityX = kappa * distance / (1 - Math.exp(- drag * t));
 
-        velocityX = Math.sign(distance) * Math.sqrt(vx_squared); // Поделим ускорение на фреймрейт
-        velocityY = bmin * velocityX;
-        angle = Math.atan(bmin);
-        hcomputed = a * distance * distance + bmin * distance;
-        console.info("parable params are: a=" + a + ", b=" + bmin);
-        console.info("height: " + hcomputed + ", actual: " + height);
-        console.info("shell velocity is " + velocityX + ", " + velocityY);
-        // Вооот, теперь оно работает. Но так как играть так нельзя (получается симулятор ПРО), немного ослабим ИИ.
+        velocityXAlt = 1 * (kappa * distance + distance / t);
+        velocityY = 1 * (kappa * (height - v_terminal * t) + height / t);
+        // check the result!
+        // d = v_x
+        console.info("distance = " + distance + ", computed: " + velocityX * (1 - Math.exp(-drag * t) / drag));
+
+        console.info("shell velocity is " + velocityX + " (" + velocityXAlt + ")" + ", " + velocityY);
+        // Но так как играть так нельзя (получается симулятор ПРО), немного ослабим ИИ.
         // Допустим, что угол правильный, но скорость будем подбирать методом тыка.
         error_order = 1 / state.aiState[myCannon].iteration;
         relative_error_x = Math.random() * (error_order) - (error_order / 2);
@@ -594,8 +616,8 @@ console.log(towersGroup.getChildren());
 
         return {
             angle: sign * angle * 180 / Math.PI,
-            x: velocityX/10,
-            y: (-velocityY * sign)/10
+            x: velocityX,
+            y: velocityY,
         };
     }
 
